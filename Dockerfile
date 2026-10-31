@@ -1,8 +1,10 @@
+FROM --platform=$TARGETOS/$TARGETARCH ghcr.io/steamcmd/steamcmd:debian-13 AS steamcmd
+
 FROM --platform=$TARGETOS/$TARGETARCH debian:trixie-slim
 
 USER root
 ARG DOTNET_RUNTIME_VERSION=10.0.14
-ARG STEAMCMD_BUILD_ID=3
+ARG STEAMCMD_BUILD_ID=4
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -17,20 +19,17 @@ RUN apt-get update \
  && echo "634326028645f38731c8c4e71a68356e4ca0d6b6607139a234ab760687f742063edaf33a1f20dda615742d2dc8300ca2ff857619d51fbb38090383b71334af89  /tmp/dotnet-runtime.tar.gz" | sha512sum -c - \
  && tar -xzf /tmp/dotnet-runtime.tar.gz -C /usr/share/dotnet \
  && rm -f /tmp/dotnet-runtime.tar.gz \
- && curl -fsSL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o /tmp/steamcmd.tar.gz \
- && tar -xzf /tmp/steamcmd.tar.gz -C /opt/steamcmd \
- && test -f /opt/steamcmd/steamcmd.sh \
- && test -f /opt/steamcmd/linux32/steamcmd \
- && chmod 0755 /opt/steamcmd/steamcmd.sh \
- && chmod 0755 /opt/steamcmd/linux32/steamcmd \
- && rm -f /tmp/steamcmd.tar.gz \
  && rm -rf /var/lib/apt/lists/* \
  && useradd -m -d /home/container container \
  && chown -R container:container /opt/steamcmd
 
+COPY --from=steamcmd --chown=container:container /root/.local/share/Steam/steamcmd/ /opt/steamcmd/
+RUN test -x /opt/steamcmd/linux32/steamcmd \
+ && test -f /opt/steamcmd/linux64/steamclient.so
+
 ENV DOTNET_ROOT=/usr/share/dotnet \
     PATH="/usr/share/dotnet:${PATH}" \
-    STEAMCMD=/opt/steamcmd/steamcmd.sh \
+    STEAMCMD=/opt/steamcmd/linux32/steamcmd \
     STEAMCMD_BUILD_ID=${STEAMCMD_BUILD_ID} \
     USER=container \
     HOME=/home/container
