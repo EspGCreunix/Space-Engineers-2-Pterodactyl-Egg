@@ -64,10 +64,9 @@ for attempt in 1 2; do
     STEAMCMD_OK=1
     break
   fi
-  # SteamCMD may exit cleanly after downloading its own first-run update without
-  # processing the requested app_update. Retry once in this same container so
-  # that an ephemeral container does not discard that self-update before use.
-  if [[ $attempt -eq 1 && $STEAMCMD_STATUS -eq 0 ]]; then
+  # SteamCMD may exit after its own first-run update or a transient download
+  # failure without confirming app_update. Retry once in this same container.
+  if [[ $attempt -eq 1 ]]; then
     continue
   fi
   break
