@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<PluginData xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="GitHubPlugin">
+  <Id>5EA5AFEC-6B23-44C1-91C4-A5FB5A68090B</Id>
+  <RepoId>yellow5111/SE2Online</RepoId>
+  <FriendlyName>SE2 Online Linux headless (experimental)</FriendlyName>
+  <Author>Local custom build</Author>
+  <Tooltip>Experimental headless Linux port using Pulsar and LinuxCompat</Tooltip>
+  <Description>Local custom Y51 build. Uses LinuxCompat platform services in the headless server engine.</Description>
+  <SourceDirectories><Directory>Y51_SE2Online</Directory><Directory>Properties</Directory></SourceDirectories>
+  <DefineConstants>PULSAR</DefineConstants>
+  <Asset Name="AssetFolder" Path="Y51_SE2Online/Content" />
+  <Asset Name="GeneratorStub" Path="Pulsar/VRage.Library.Generator.dll" Reference="true" Sha256="379c2109e35d660709feb5f45fec19ba5df36e462f8ade75790ef828fa3b224f" />
+  <Hidden>false</Hidden>
+</PluginData>

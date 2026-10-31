@@ -1,0 +1,62 @@
+{
+  "_comment": "SE2 Online Linux headless egg. SteamCMD downloads/updates game AppID 1133870 in the persistent server volume at startup; game files are not included in the public image.",
+  "meta": {
+    "version": "PTDL_v2",
+    "update_url": null
+  },
+  "exported_at": "2026-10-31T00:00:00+01:00",
+  "name": "Space Engineers 2 - SE2 Online Linux",
+  "author": "EspGCreunix",
+  "description": "SE2 Online dedicated server on native Linux through Pulsar/LinuxCompat. Downloads and updates Space Engineers 2 through SteamCMD on server start.",
+  "features": null,
+  "docker_images": {
+    "GHCR Linux AMD64": "ghcr.io/espgcreunix/se2online-pulsar:latest"
+  },
+  "file_denylist": [],
+  "startup": "bash ./run-se2online-pulsar.sh",
+  "config": {
+    "files": "{}",
+    "startup": "{\"done\":\"dedicated: configuration loaded from\"}",
+    "logs": "{}",
+    "stop": "stop now"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/bash\nset -Eeuo pipefail\nfor bin in curl bash; do command -v \"$bin\" >/dev/null || { echo \"Missing installer tool: $bin\"; exit 1; }; done\ncurl -fL --retry 3 https://raw.githubusercontent.com/EspGCreunix/se2online-pterodactyl/main/install-server.sh -o /tmp/se2online-install.sh\nbash /tmp/se2online-install.sh",
+      "container": "ghcr.io/pterodactyl/installers:debian",
+      "entrypoint": "bash"
+    }
+  },
+  "variables": [
+    {
+      "name": "Server Config Path",
+      "description": "Path to the SE2 Online server configuration file.",
+      "env_variable": "SE2_SERVER_CONFIG",
+      "default_value": "/home/container/server.json",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string",
+      "field_type": "text"
+    },
+    {
+      "name": "Game2 Directory",
+      "description": "Game2 directory inside the automatically managed Steam installation.",
+      "env_variable": "SE2_GAME2_DIR",
+      "default_value": "/home/container/steamapps/common/SpaceEngineers2/Game2",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string",
+      "field_type": "text"
+    },
+    {
+      "name": "Pulsar Directory",
+      "description": "Pulsar Linux directory installed by the egg.",
+      "env_variable": "SE2_PULSAR_DIR",
+      "default_value": "/home/container/pulsar",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string",
+      "field_type": "text"
+    }
+  ]
+}

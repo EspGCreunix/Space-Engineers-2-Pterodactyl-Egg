@@ -1,0 +1,72 @@
+namespace Y51_SE2Online.Sync;
+
+public enum SyncMsg : byte
+{
+	JoinRequest = 32,
+	JoinAccept = 33,
+	JoinReject = 34,
+	JoinWait = 35,
+	TypeKeys = 36,
+	ClientStatus = 37,
+	CharacterRequest = 38,
+	SignalKeys = 39,
+	PlayerAssign = 40,
+	StoryMove = 41,
+	StoryFinish = 42,
+	PlayerTable = 43,
+	PlayerStatus = 44,
+	SocialRequest = 45,
+	SocialSnapshot = 46,
+	Snapshot = 48,
+	EntityBundle = 49,
+	Despawn = 50,
+	DataRemove = 51,
+	// Tag Data additions (DampeningData...), lifecycle-ordered with DataRemove.
+	DataTag = 60,
+	BlobData = 52,
+	ClientCommands = 54,
+	SignalBatch = 55,
+	StringTable = 56,
+	ObservableBatch = 57,
+	ObservableEdits = 59,
+	PlayerNames = 58,
+	StateBatch = 64,
+	ClientInput = 65,
+	ClientLook = 66,
+	ChatSend = 67,
+	ChatLine = 68,
+	AdminRequest = 69,
+	AdminState = 70,
+	SpawnMenu = 71,
+	InputAck = 72,
+	GpsShare = 73,
+	// Pings (HostSession.Pings.cs): a player's ping up, the host's ping down to each player who may see it.
+	PingSend = 74,
+	BuildGhost = 75,
+	VoiceUp = 76,
+	VoiceDown = 77,
+	Motd = 78,
+	ServerInfo = 79,
+	TradeRequest = 80,
+	TradeAction = 81,
+	TradeInvite = 82,
+	TradeState = 83,
+	Punch = 86,
+	FightLock = 87,
+	WaterGrids = 88,
+	// A player's own character inputs up, where the server has it down (OwnMotion.cs).
+	OwnMotion = 89,
+	// Our own replication transport (Engine/*): sequenced reliable frames down, unreliable sampled state down, frames up.
+	EngineFrame = 90,
+	EngineState = 91,
+	EngineUp = 92,
+	// Custom rules: the host's definition values, and the player's answer once applied (HostSession.Rules.cs).
+	RulesOffer = 84,
+	RulesAck = 85,
+	// Counted down from SyncProtocol.IsSyncMessage's upper bound.
+	PingShow = 93,
+	DesyncReport = 94,
+	DesyncCheck = 95,
+	// Roster patches (RosterDocs.cs); a free slot, clear of the values other changes count up and down from.
+	RosterSync = 47
+}

@@ -1,0 +1,18 @@
+{
+  "SaveId": "",
+  "StartContent": "",
+  "StartWorkshop": "",
+  "WorldName": "Classic Survival 1",
+  "EnableAutosave": true,
+  "SaveIntervalSeconds": 300,
+  "SaveOnExit": true,
+  "ShutdownCountdownSeconds": 60,
+  "Network": {
+    "SessionName": "SE2 Online Server",
+    "Advertise": true,
+    "FriendsOnly": false,
+    "AllowDirectIp": true,
+    "BindAddress": "0.0.0.0",
+    "ListenPort": 27016
+  }
+}

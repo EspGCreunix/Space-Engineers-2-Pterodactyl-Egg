@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+*.log
+*.bak*
+server.json
+dedicated-state.json
+dedicated-command.txt
+dedicated-status.json
+dedicated-console.jsonl
+.steamcmd-update-blocked
+.steamcmd-update.log
+*.zip
