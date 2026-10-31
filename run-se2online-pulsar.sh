@@ -48,13 +48,31 @@ if [[ -f "$SOURCE_MANIFEST" && ! -f "$TARGET_MANIFEST" ]]; then
 fi
 
 echo "Vérification Steam de SE2 (AppID 1133870) dans $GAME_ROOT; aucun dossier de jeu secondaire."
-set +e
-"$STEAMCMD_BIN" +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 \
-  +@sSteamCmdForcePlatformType windows +force_install_dir "$GAME_ROOT" \
-  +login anonymous +app_update 1133870 +quit 2>&1 | tee "$UPDATE_LOG"
-STEAMCMD_STATUS=${PIPESTATUS[0]}
-set -e
-if [[ $STEAMCMD_STATUS -ne 0 ]] || ! grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then
+: > "$UPDATE_LOG"
+STEAMCMD_OK=0
+for attempt in 1 2; do
+  if [[ $attempt -eq 2 ]]; then
+    echo "SteamCMD s’est fermé sans confirmer SE2; nouvel essai unique après son auto-mise à jour."
+  fi
+  set +e
+  "$STEAMCMD_BIN" +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 \
+    +@sSteamCmdForcePlatformType windows +force_install_dir "$GAME_ROOT" \
+    +login anonymous +app_update 1133870 +quit 2>&1 | tee -a "$UPDATE_LOG"
+  STEAMCMD_STATUS=${PIPESTATUS[0]}
+  set -e
+  if [[ $STEAMCMD_STATUS -eq 0 ]] && grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then
+    STEAMCMD_OK=1
+    break
+  fi
+  # SteamCMD may exit cleanly after downloading its own first-run update without
+  # processing the requested app_update. Retry once in this same container so
+  # that an ephemeral container does not discard that self-update before use.
+  if [[ $attempt -eq 1 && $STEAMCMD_STATUS -eq 0 ]]; then
+    continue
+  fi
+  break
+done
+if [[ $STEAMCMD_OK -ne 1 ]]; then
   printf '%s\n' "${STEAMCMD_BUILD_ID:-unknown}" > "$UPDATE_BLOCKED"
   echo "ERROR: SteamCMD n'a pas confirmé la mise à jour. Le serveur ne démarre pas pour éviter une installation incomplète et les redémarrages en boucle."
   echo "Consulte $UPDATE_LOG; corrige l'accès Steam puis supprime $UPDATE_BLOCKED pour réessayer."
