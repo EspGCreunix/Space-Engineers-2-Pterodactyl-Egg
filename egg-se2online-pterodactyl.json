@@ -6,7 +6,7 @@
   },
   "exported_at": "2026-10-31T00:00:00+01:00",
   "name": "Space Engineers 2 - SE2 Online Linux",
-  "author": "EspGCreunix",
+  "author": "24536501+EspGCreunix@users.noreply.github.com",
   "description": "SE2 Online dedicated server on native Linux through Pulsar/LinuxCompat. Downloads and updates Space Engineers 2 through SteamCMD on server start.",
   "features": null,
   "docker_images": {
