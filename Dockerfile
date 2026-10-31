@@ -2,6 +2,7 @@ FROM --platform=$TARGETOS/$TARGETARCH debian:trixie-slim
 
 USER root
 ARG DOTNET_RUNTIME_VERSION=10.0.14
+ARG STEAMCMD_BUILD_ID=3
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -19,7 +20,9 @@ RUN apt-get update \
  && curl -fsSL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o /tmp/steamcmd.tar.gz \
  && tar -xzf /tmp/steamcmd.tar.gz -C /opt/steamcmd \
  && test -f /opt/steamcmd/steamcmd.sh \
+ && test -f /opt/steamcmd/linux32/steamcmd \
  && chmod 0755 /opt/steamcmd/steamcmd.sh \
+ && chmod 0755 /opt/steamcmd/linux32/steamcmd \
  && rm -f /tmp/steamcmd.tar.gz \
  && rm -rf /var/lib/apt/lists/* \
  && useradd -m -d /home/container container \
@@ -28,6 +31,7 @@ RUN apt-get update \
 ENV DOTNET_ROOT=/usr/share/dotnet \
     PATH="/usr/share/dotnet:${PATH}" \
     STEAMCMD=/opt/steamcmd/steamcmd.sh \
+    STEAMCMD_BUILD_ID=${STEAMCMD_BUILD_ID} \
     USER=container \
     HOME=/home/container
 WORKDIR /home/container

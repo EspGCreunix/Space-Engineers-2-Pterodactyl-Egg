@@ -13,9 +13,14 @@ STEAMCMD_BIN="${STEAMCMD:-/opt/steamcmd/steamcmd.sh}"
 UPDATE_BLOCKED="$ROOT/.steamcmd-update-blocked"
 UPDATE_LOG="$ROOT/.steamcmd-update.log"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
-  echo "ERROR: La dernière mise à jour Steam a échoué; nouvelle tentative bloquée pour éviter une boucle."
-  echo "Après correction, supprime $UPDATE_BLOCKED puis redémarre. Journal: $UPDATE_LOG"
-  exit 0
+  BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
+  if [[ "$BLOCKED_BUILD_ID" == "${STEAMCMD_BUILD_ID:-unknown}" ]]; then
+    echo "ERROR: La dernière mise à jour Steam a échoué sur cette image; nouvelle tentative bloquée pour éviter une boucle."
+    echo "Après correction Steam, supprime $UPDATE_BLOCKED puis redémarre. Journal: $UPDATE_LOG"
+    exit 0
+  fi
+  echo "Nouvelle image SteamCMD détectée; nouvel essai de mise à jour autorisé."
+  rm -f "$UPDATE_BLOCKED"
 fi
 if [[ ! -x "$STEAMCMD_BIN" ]]; then
   echo "ERROR: SteamCMD absent de l'image ($STEAMCMD_BIN). Reconstruis l'image Docker locale."
@@ -50,7 +55,7 @@ set +e
 STEAMCMD_STATUS=${PIPESTATUS[0]}
 set -e
 if [[ $STEAMCMD_STATUS -ne 0 ]] || ! grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then
-  : > "$UPDATE_BLOCKED"
+  printf '%s\n' "${STEAMCMD_BUILD_ID:-unknown}" > "$UPDATE_BLOCKED"
   echo "ERROR: SteamCMD n'a pas confirmé la mise à jour. Le serveur ne démarre pas pour éviter une installation incomplète et les redémarrages en boucle."
   echo "Consulte $UPDATE_LOG; corrige l'accès Steam puis supprime $UPDATE_BLOCKED pour réessayer."
   exit 0
