@@ -18,6 +18,8 @@ RUN apt-get update \
  && rm -f /tmp/dotnet-runtime.tar.gz \
  && curl -fsSL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" -o /tmp/steamcmd.tar.gz \
  && tar -xzf /tmp/steamcmd.tar.gz -C /opt/steamcmd \
+ && test -f /opt/steamcmd/steamcmd.sh \
+ && chmod 0755 /opt/steamcmd/steamcmd.sh \
  && rm -f /tmp/steamcmd.tar.gz \
  && rm -rf /var/lib/apt/lists/* \
  && useradd -m -d /home/container container \
