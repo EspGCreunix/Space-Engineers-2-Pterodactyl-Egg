@@ -100,7 +100,7 @@ STEAM_ACCOUNT_ID="anonymous"
 if [[ -n "${STEAM_USERNAME:-}" ]]; then
   STEAM_ACCOUNT_ID="$(printf '%s' "$STEAM_USERNAME" | sha256sum | cut -c1-16)"
 fi
-STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-4-${STEAM_ACCOUNT_ID}"
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-5-${STEAM_ACCOUNT_ID}"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
   if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
@@ -124,6 +124,13 @@ if [[ ! -x "$STEAMCMD_BIN" ]]; then
   echo "ERROR: SteamCMD absent de l'image ($STEAMCMD_BIN). Reconstruis l'image Docker locale."
   exit 2
 fi
+# Pterodactyl runs this image with a read-only root filesystem. SteamCMD's
+# self-updater must replace files beside its executable, so give it a writable
+# runtime copy under /tmp; game files still install to the persistent volume.
+STEAMCMD_IMAGE_BIN="$STEAMCMD_BIN"
+STEAMCMD_RUNTIME_BIN="$(mktemp -d /tmp/se2-steamcmd-bin.XXXXXX)"
+cp -R "$(dirname "$STEAMCMD_IMAGE_BIN")/." "$STEAMCMD_RUNTIME_BIN/"
+STEAMCMD_BIN="$STEAMCMD_RUNTIME_BIN/steamcmd.sh"
 mkdir -p "$GAME_ROOT" "$ROOT/.home"
 export HOME="${HOME:-$ROOT/.home}"
 mkdir -p "$HOME"
@@ -208,6 +215,9 @@ steamcmd_sync_home() {
   if [[ -n "${STEAMCMD_RUNTIME_HOME:-}" && -d "$STEAMCMD_RUNTIME_HOME" ]]; then
     steamcmd_persist_home
     rm -rf -- "$STEAMCMD_RUNTIME_HOME"
+  fi
+  if [[ -n "${STEAMCMD_RUNTIME_BIN:-}" && -d "$STEAMCMD_RUNTIME_BIN" ]]; then
+    rm -rf -- "$STEAMCMD_RUNTIME_BIN"
   fi
 }
 trap steamcmd_sync_home EXIT
