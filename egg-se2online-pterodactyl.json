@@ -80,7 +80,7 @@
     },
     {
       "name": "Steam Guard Code (temporary)",
-      "description": "Optional one-time Steam Guard code if SteamCMD requests it. Update this value when a fresh code is required.",
+      "description": "Optional one-time Steam Guard code. Leave blank to enter the code in the Pterodactyl console if SteamCMD asks for it.",
       "env_variable": "STEAM_GUARD_CODE",
       "default_value": "",
       "user_viewable": true,

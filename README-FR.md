@@ -23,7 +23,7 @@ Après le premier push :
 
 ## Accès Steam
 
-Par défaut, SteamCMD tente un téléchargement anonyme. Si Steam exige une licence pour l’AppID 1133870, renseigne `Steam Username` et `Steam Password` dans l’onglet **Startup** du serveur Pterodactyl avec un compte qui possède Space Engineers 2. Le champ `Steam Guard Code` accepte un code temporaire si SteamCMD le demande; un nouveau code peut être nécessaire lors d'une connexion ultérieure. Si le compte ou le code est refusé, le démarrage s'arrête et le journal `.steamcmd-update.log` indique l'erreur.
+Par défaut, SteamCMD tente un téléchargement anonyme. Si Steam exige une licence pour l’AppID 1133870, renseigne `Steam Username` et `Steam Password` dans l’onglet **Startup** du serveur Pterodactyl avec un compte qui possède Space Engineers 2. Lors d'une première connexion, SteamCMD peut demander un code Steam Guard dans la console Pterodactyl. Tu peux aussi le saisir temporairement dans le champ `Steam Guard Code`. Si le compte ou le code est refusé, le démarrage s'arrête et le journal `.steamcmd-update.log` indique l'erreur.
 
 **Sécurité :** les variables d’egg sont transmises au conteneur et ne constituent pas un coffre-fort. Le panneau et le processus du serveur peuvent accéder aux valeurs; le mot de passe est également transmis à SteamCMD pendant la connexion. Utilise un compte Steam dédié qui ne contient aucun autre jeu ou moyen de paiement, et ne mets jamais d’identifiants réels dans l’egg, `server.json`, le dépôt GitHub ou les journaux. Chaque administrateur doit saisir ses propres valeurs dans son serveur Pterodactyl.
 
