@@ -21,6 +21,7 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - `Starting Scenario` accepte les identifiants vanilla `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF` ou `EmptyWorld`. Il est vide par défaut pour reprendre la sauvegarde actuelle. Choisir un scénario démarre un nouveau monde; l’ancienne sauvegarde reste dans le volume. Pour revenir au monde géré par `SaveId`/`WorldName`, remets le champ à vide.
 - SE2 Online affiche un menu de premier spawn et de respawn : vaisseau en espace, lander sur planète, ainsi que les médibays accessibles. La variable `Offer Vanilla Respawn Ships` ajoute les vaisseaux vanilla du jeu. Un choix sur planète n’est possible que si le scénario/sauvegarde contient une planète.
 - Le délai de compilation des plugins Pulsar/LinuxCompat est réglé automatiquement à cinq minutes pour laisser compiler ce grand plugin au premier démarrage.
+- Le premier démarrage peut être long : SteamCMD télécharge le jeu et Pulsar compile les plugins pour Linux. Les démarrages suivants sont normalement plus rapides. Lors de la toute première création d’un monde, le serveur peut redémarrer une fois pendant son initialisation; laisse ce redémarrage se terminer.
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.
 
@@ -47,7 +48,16 @@ La connexion à l’annuaire des serveurs, l’allocation des ports et la compat
 
 ## Versions et mises à jour
 
-Le contenu du jeu est vérifié auprès de Steam à chaque lancement; SteamCMD conserve son manifeste dans le volume du serveur et ne télécharge normalement que les données modifiées. Pulsar est épinglé en v2.4.3 dans l’installation de l’egg. Pour changer de version Pulsar ou de code SE2 Online, publier une nouvelle version du dépôt puis réinstaller l’egg sur le serveur concerné (une réinstallation peut toucher aux fichiers du serveur : sauvegarder le monde avant).
+Les composants n’ont pas tous le même mécanisme de mise à jour :
+
+- **Fichiers de Space Engineers 2 :** SteamCMD vérifie l’AppID `1133870` à chaque démarrage et met à jour l’installation persistante si Steam propose une nouvelle version. Une mise à jour du jeu ne nécessite pas de réinstaller l’egg.
+- **Lanceur :** au démarrage, le conteneur récupère `run-se2online-pulsar.sh` depuis la branche `main` de GitHub. Si GitHub est inaccessible, il utilise la copie déjà présente dans le volume.
+- **Image Docker :** Pterodactyl récupère l’image configurée au démarrage. Ce dépôt publie `latest` lorsqu’une modification du Dockerfile ou de l’entrypoint est poussée sur `main`. Cela met à jour l’environnement du conteneur, pas l’installation Pterodactyl/Wings de l’hôte.
+- **Plugin SE2 Online et fichiers LinuxCompat :** ils sont conservés dans le volume du serveur et ne sont pas remplacés automatiquement par le lanceur. Leur mise à jour doit être intégrée au projet puis appliquée volontairement au serveur. Sauvegarde le monde et les fichiers avant toute réinstallation ou remplacement.
+- **Pulsar :** l’installation utilise la version vérifiée v2.4.3 et conserve une version déjà installée. Pulsar ne s’auto-met pas à jour à chaque démarrage; une nouvelle version doit être adoptée par le projet puis installée sur les serveurs concernés.
+- **Pterodactyl/Wings et le système de l’hôte :** leur mise à jour est gérée par l’administrateur du nœud, en dehors de cet egg.
+
+Ce projet fournit un egg Pterodactyl, une image Docker et un lanceur personnalisés. Il assemble plusieurs projets existants plutôt que de reprendre un système complet de gestion de serveur : SE2 Online de [Yellow51](https://se2-online.yellow51.dev/), [Pulsar](https://github.com/SpaceGT/Pulsar), [LinuxCompat](https://github.com/CometWorks/linux-compat2), SteamCMD et Pterodactyl. Voir [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) pour les avis de licence.
 
 ## Licences
 

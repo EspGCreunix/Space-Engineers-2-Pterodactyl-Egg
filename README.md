@@ -18,6 +18,20 @@ The optional **Server Name** Startup variable overrides `Network.SessionName`. L
 
 If `server.json` is missing, the launcher recreates a default Survival configuration, then applies the Pterodactyl Startup variables and allocated server port.
 
+## First start and world creation
+
+The first startup can take a long time: SteamCMD downloads the game, and Pulsar compiles the server plugins for Linux. Later starts are normally faster; SteamCMD checks for game updates and downloads changed files when needed. When a new world is created for the first time, this setup may restart the server once while the world is initialized. Let that restart finish; it should then start normally with the new world.
+
+## What updates automatically
+
+- **Space Engineers 2 game files:** SteamCMD checks AppID 1133870 on each server start and updates the persistent installation when Steam has a newer build. A game update does not require reinstalling the egg.
+- **Launcher script:** the container fetches the current `run-se2online-pulsar.sh` from this repository's `main` branch at startup. If GitHub cannot be reached, it uses the copy already in the server volume.
+- **Runtime Docker image:** Pterodactyl pulls the configured image when starting the server. This project publishes a new `latest` image when changes to the Dockerfile or container entrypoint are pushed to `main`. This updates the container runtime, not the host's Pterodactyl/Wings installation.
+- **SE2 Online plugin and LinuxCompat files:** these live in the persistent server volume. The startup launcher does not replace them automatically. Updating their source requires a project/egg update or reinstall; back up the world and server files first.
+- **Pulsar:** the installer uses the verified Pulsar v2.4.3 release and preserves an existing installation. Pulsar is not self-updated at every startup; a newer version must be deliberately adopted by this project and installed for existing servers.
+
+This is a custom Pterodactyl egg, Docker image, and startup integration. It combines existing projects rather than reusing one complete server-management system: SE2 Online by [Yellow51](https://se2-online.yellow51.dev/), [Pulsar](https://github.com/SpaceGT/Pulsar), and [LinuxCompat](https://github.com/CometWorks/linux-compat2), plus SteamCMD and Pterodactyl. See [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) for included notices.
+
 Import `egg-se2online-pterodactyl.json`. GitHub Actions publishes `ghcr.io/espgcreunix/se2online-pulsar:latest` after the first push to `main`; make that GHCR package public so Pterodactyl can pull it.
 
 The image refreshes the server-side launcher from the repository's `main` branch at startup, falling back to the installed copy if GitHub is unavailable. Reimport the egg JSON in Pterodactyl to expose new Startup variables on existing servers.
