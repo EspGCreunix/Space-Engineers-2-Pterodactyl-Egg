@@ -69,8 +69,8 @@
       "field_type": "text"
     },
     {
-      "name": "Server Password (optional)",
-      "description": "Password players must enter to join. Leave blank for an open server. The value is stored in server.json inside this server's private volume.",
+      "name": "Game Server Join Password (optional)",
+      "description": "Independent from Steam Password. This is only the password players enter to join; it sets Network.Password in server.json. Leave blank for an open server.",
       "env_variable": "SE2_SERVER_PASSWORD",
       "default_value": "",
       "user_viewable": true,
@@ -159,8 +159,8 @@
       "field_type": "text"
     },
     {
-      "name": "Steam Password (optional)",
-      "description": "Password for the Steam account above. Stored by Pterodactyl and available to the server process; do not use your main Steam account.",
+      "name": "Steam Account Password (SteamCMD only)",
+      "description": "Used only by SteamCMD to sign in and download/update Space Engineers 2. Never used as the game server's join password. Stored by Pterodactyl; use a dedicated Steam account.",
       "env_variable": "STEAM_PASSWORD",
       "default_value": "",
       "user_viewable": true,

@@ -392,6 +392,8 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 SE2_GAME_MODE="${SE2_GAME_MODE:-Survival}"
 SE2_SERVER_NAME="${SE2_SERVER_NAME:-}"
+# This is the game join password only. Never fall back to STEAM_PASSWORD:
+# Steam credentials are used exclusively by SteamCMD above.
 SE2_SERVER_PASSWORD="${SE2_SERVER_PASSWORD:-}"
 SE2_ADMIN_STEAM_IDS="${SE2_ADMIN_STEAM_IDS:-}"
 SE2_START_CONTENT="${SE2_START_CONTENT:-}"
@@ -399,10 +401,11 @@ SE2_VANILLA_RESPAWN_SHIPS="${SE2_VANILLA_RESPAWN_SHIPS:-0}"
 SE2_BLOCK_PROGRESSION="${SE2_BLOCK_PROGRESSION:-0}"
 SE2_WORKER_THREADS="${SE2_WORKER_THREADS:-0}"
 SE2_CATCH_UP_MS="${SE2_CATCH_UP_MS:-1000}"
-python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_SERVER_PASSWORD" "$SE2_ADMIN_STEAM_IDS" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" "$SE2_BLOCK_PROGRESSION" "$SE2_WORKER_THREADS" "$SE2_CATCH_UP_MS" <<'PY'
+SE2_SERVER_PASSWORD="$SE2_SERVER_PASSWORD" python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_ADMIN_STEAM_IDS" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" "$SE2_BLOCK_PROGRESSION" "$SE2_WORKER_THREADS" "$SE2_CATCH_UP_MS" <<'PY'
 import json, os, re, sys, tempfile
 
-path, mode, server_name, server_password, admin_ids_raw, start_content, vanilla_ships, block_progression, worker_threads_raw, catch_up_raw = sys.argv[1:]
+path, mode, server_name, admin_ids_raw, start_content, vanilla_ships, block_progression, worker_threads_raw, catch_up_raw = sys.argv[1:]
+server_password = os.environ.get("SE2_SERVER_PASSWORD", "")
 if mode not in ("Survival", "Creative"):
     raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
 if len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):

@@ -16,7 +16,7 @@ Stop the server and back up the save before switching worlds. Copy the complete 
 
 The optional **Server Name** Startup variable overrides `Network.SessionName`. Leave it blank to manage the name directly in `server.json`.
 
-`Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and assigns those players to the SE2 Online `Admin` group in `Permissions/players.json`, mirrored to `access.json`. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
+`Game Server Join Password` sets only `Network.Password` in `server.json`; leave it blank for an open server. It is independent from `Steam Account Password (SteamCMD only)`, which is used only to sign in to SteamCMD and download/update the game. `Admin Steam IDs` accepts comma-separated SteamID64 values and assigns those players to the SE2 Online `Admin` group in `Permissions/players.json`, mirrored to `access.json`. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
 
 `Game Worker Threads` defaults to `0`, which lets the game choose its worker count. `Tick Catch-up (ms)` defaults to `1000`; setting it to `0` disables large catch-up bursts after a stall, but does not add CPU and can make simulation fall behind under load. Avoid setting every performance value to zero without checking what it controls.
 
