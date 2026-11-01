@@ -23,7 +23,9 @@ Après le premier push :
 
 ## Accès Steam
 
-Chaque joueur doit posséder Space Engineers 2 sur Steam pour utiliser le jeu conformément à sa licence. L’egg essaie d’abord une connexion anonyme SteamCMD. Si Steam ne permet pas le téléchargement anonyme de l’AppID 1133870, l’installation automatique du jeu échouera : le journal `.steamcmd-update.log` affichera la réponse Steam et il faudra fournir les fichiers obtenus légalement par un compte possédant le jeu. Ne publie jamais un mot de passe Steam dans l’egg, `server.json` ou le dépôt.
+Par défaut, SteamCMD tente un téléchargement anonyme. Si Steam exige une licence pour l’AppID 1133870, renseigne `Steam Username` et `Steam Password` dans l’onglet **Startup** du serveur Pterodactyl avec un compte qui possède Space Engineers 2. Le champ `Steam Guard Code` accepte un code temporaire si SteamCMD le demande; un nouveau code peut être nécessaire lors d'une connexion ultérieure. Si le compte ou le code est refusé, le démarrage s'arrête et le journal `.steamcmd-update.log` indique l'erreur.
+
+**Sécurité :** les variables d’egg sont transmises au conteneur et ne constituent pas un coffre-fort. Le panneau et le processus du serveur peuvent accéder aux valeurs; le mot de passe est également transmis à SteamCMD pendant la connexion. Utilise un compte Steam dédié qui ne contient aucun autre jeu ou moyen de paiement, et ne mets jamais d’identifiants réels dans l’egg, `server.json`, le dépôt GitHub ou les journaux. Chaque administrateur doit saisir ses propres valeurs dans son serveur Pterodactyl.
 
 La connexion à l’annuaire des serveurs, l’allocation des ports et la compatibilité LinuxCompat dépendent aussi de la version actuelle du jeu et de la configuration réseau du nœud. L’egg est donc expérimental et doit d’abord être validé sur un serveur de test.
 

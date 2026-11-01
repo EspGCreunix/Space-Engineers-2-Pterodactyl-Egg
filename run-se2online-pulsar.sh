@@ -50,6 +50,23 @@ fi
 echo "Vérification Steam de SE2 (AppID 1133870) dans $GAME_ROOT; aucun dossier de jeu secondaire."
 : > "$UPDATE_LOG"
 STEAMCMD_OK=0
+STEAM_LOGIN_ARGS=(+login anonymous)
+if [[ -n "${STEAM_USERNAME:-}" ]]; then
+  if [[ -z "${STEAM_PASSWORD:-}" ]]; then
+    echo "ERROR: STEAM_USERNAME est renseigné mais STEAM_PASSWORD est vide."
+    exit 2
+  fi
+  STEAM_LOGIN_ARGS=(+login "$STEAM_USERNAME" "$STEAM_PASSWORD")
+  if [[ -n "${STEAM_GUARD_CODE:-}" ]]; then
+    STEAM_LOGIN_ARGS+=("$STEAM_GUARD_CODE")
+  fi
+  echo "Connexion Steam avec le compte configuré dans les variables Pterodactyl."
+elif [[ -n "${STEAM_PASSWORD:-}" || -n "${STEAM_GUARD_CODE:-}" ]]; then
+  echo "ERROR: renseigne STEAM_USERNAME avec le mot de passe ou le code Steam Guard."
+  exit 2
+else
+  echo "Aucun compte configuré; essai de connexion anonyme à Steam."
+fi
 for attempt in 1 2; do
   if [[ $attempt -eq 2 ]]; then
     echo "SteamCMD s’est fermé sans confirmer SE2; nouvel essai unique après son auto-mise à jour."
@@ -57,7 +74,7 @@ for attempt in 1 2; do
   set +e
   "$STEAMCMD_BIN" +@ShutdownOnFailedCommand 1 +@NoPromptForPassword 1 \
     +@sSteamCmdForcePlatformType windows +force_install_dir "$GAME_ROOT" \
-    +login anonymous +app_update 1133870 +quit 2>&1 | tee -a "$UPDATE_LOG"
+    "${STEAM_LOGIN_ARGS[@]}" +app_update 1133870 +quit 2>&1 | tee -a "$UPDATE_LOG"
   STEAMCMD_STATUS=${PIPESTATUS[0]}
   set -e
   if [[ $STEAMCMD_STATUS -eq 0 ]] && grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then

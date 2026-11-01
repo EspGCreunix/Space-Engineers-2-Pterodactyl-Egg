@@ -57,6 +57,36 @@
       "user_editable": false,
       "rules": "required|string",
       "field_type": "text"
+    },
+    {
+      "name": "Steam Username (optional)",
+      "description": "Steam account that owns Space Engineers 2. Leave blank to try anonymous access. Prefer a dedicated account; Pterodactyl stores this value and the server process can read it.",
+      "env_variable": "STEAM_USERNAME",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:64",
+      "field_type": "text"
+    },
+    {
+      "name": "Steam Password (optional)",
+      "description": "Password for the Steam account above. Stored by Pterodactyl and available to the server process; do not use your main Steam account.",
+      "env_variable": "STEAM_PASSWORD",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:128",
+      "field_type": "text"
+    },
+    {
+      "name": "Steam Guard Code (temporary)",
+      "description": "Optional one-time Steam Guard code if SteamCMD requests it. Update this value when a fresh code is required.",
+      "env_variable": "STEAM_GUARD_CODE",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:32",
+      "field_type": "text"
     }
   ]
 }
