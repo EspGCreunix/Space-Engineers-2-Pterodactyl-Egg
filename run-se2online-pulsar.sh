@@ -7,14 +7,86 @@ PULSAR_DIR="${SE2_PULSAR_DIR:-$ROOT/pulsar}"
 PULSAR_BIN="$PULSAR_DIR/Modern.bin"
 CONFIG="${SE2_SERVER_CONFIG:-$ROOT/server.json}"
 STEAMCMD_BIN="${STEAMCMD:-/opt/steamcmd/steamcmd.sh}"
+# Steam's current bootstrap manifest targets SteamRT64. The bundled wrapper
+# otherwise defaults to linux32 on x86_64 and can loop on an unapplied update.
+export STEAM_PLATFORM="${STEAM_PLATFORM:-linux64}"
+
+seed_steamcmd_bootstrap_packages() {
+  local package_dir="$HOME/Steam/package"
+  local manifest="$package_dir/steam_cmd_steamrt64"
+  local name hash tmp parsed=0
+
+  mkdir -p "$package_dir"
+  if [[ ! -s "$manifest" ]] || ! grep -Fq '"steamrt64"' "$manifest"; then
+    tmp="$manifest.download"
+    echo "Récupération du manifeste SteamCMD depuis client-update.steamstatic.com."
+    if ! curl -fsSL --retry 3 --connect-timeout 15 \
+      https://client-update.steamstatic.com/steam_cmd_steamrt64 -o "$tmp"; then
+      rm -f "$tmp"
+      echo "ERROR: impossible de récupérer le manifeste SteamCMD."
+      return 1
+    fi
+    mv -f "$tmp" "$manifest"
+  fi
+
+  while IFS=$'\t' read -r name hash; do
+    [[ -n "$name" && -n "$hash" ]] || continue
+    ((parsed += 1))
+    tmp="$package_dir/$name.download"
+    if [[ -f "$package_dir/$name" ]] && \
+       printf '%s  %s\n' "$hash" "$package_dir/$name" | sha256sum -c --status; then
+      continue
+    fi
+
+    echo "Récupération du paquet SteamCMD $name depuis media.steampowered.com."
+    if ! curl -fL --retry 3 --connect-timeout 15 \
+      "https://media.steampowered.com/client/$name" -o "$tmp"; then
+      rm -f "$tmp"
+      echo "ERROR: téléchargement impossible pour $name."
+      return 1
+    fi
+    if ! printf '%s  %s\n' "$hash" "$tmp" | sha256sum -c --status; then
+      rm -f "$tmp"
+      echo "ERROR: empreinte invalide pour le paquet SteamCMD $name."
+      return 1
+    fi
+    mv -f "$tmp" "$package_dir/$name"
+  done < <(awk '
+    /^[[:space:]]*"steamcmd_[^"]+"[[:space:]]*$/ {
+      package = $1; gsub(/"/, "", package)
+      full = ""; fullsha = ""; compressed = ""; compressedsha = ""
+      inpkg = 0
+      next
+    }
+    package != "" && /^[[:space:]]*\{[[:space:]]*$/ { inpkg = 1; next }
+    inpkg && /^[[:space:]]*"file"[[:space:]]/ { full = $2; gsub(/"/, "", full) }
+    inpkg && /^[[:space:]]*"sha2"[[:space:]]/ { fullsha = $2; gsub(/"/, "", fullsha) }
+    inpkg && /^[[:space:]]*"zipvz"[[:space:]]/ { compressed = $2; gsub(/"/, "", compressed) }
+    inpkg && /^[[:space:]]*"sha2vz"[[:space:]]/ { compressedsha = $2; gsub(/"/, "", compressedsha) }
+    inpkg && /^[[:space:]]*}[[:space:]]*$/ {
+      if (package ~ /^steamcmd_/) {
+        if (compressed != "" && compressedsha != "") print compressed "\t" compressedsha
+        else if (full != "" && fullsha != "") print full "\t" fullsha
+      }
+      package = ""; inpkg = 0
+    }
+  ' "$manifest")
+
+  if [[ "$parsed" -eq 0 ]]; then
+    echo "ERROR: aucun paquet SteamCMD exploitable dans le manifeste."
+    return 1
+  fi
+  echo "Paquets bootstrap SteamCMD vérifiés : $parsed."
+}
 
 # SteamCMD writes into the existing game folder. Keep its app manifest and update
 # metadata on the persistent Pterodactyl volume so later starts only fetch deltas.
 UPDATE_BLOCKED="$ROOT/.steamcmd-update-blocked"
 UPDATE_LOG="$ROOT/.steamcmd-update.log"
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
-  if [[ "$BLOCKED_BUILD_ID" == "${STEAMCMD_BUILD_ID:-unknown}" ]]; then
+  if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
     echo "ERROR: La dernière mise à jour Steam a échoué sur cette image; nouvelle tentative bloquée pour éviter une boucle."
     echo "Après correction Steam, supprime $UPDATE_BLOCKED puis redémarre. Journal: $UPDATE_LOG"
     exit 0
@@ -48,6 +120,7 @@ if [[ -f "$SOURCE_MANIFEST" && ! -f "$TARGET_MANIFEST" ]]; then
 fi
 
 echo "Vérification Steam de SE2 (AppID 1133870) dans $GAME_ROOT; aucun dossier de jeu secondaire."
+echo "SteamCMD platform: $STEAM_PLATFORM"
 : > "$UPDATE_LOG"
 STEAMCMD_OK=0
 STEAM_LOGIN_ARGS=(+login anonymous)
@@ -94,12 +167,18 @@ for attempt in 1 2; do
   # SteamCMD may exit after its own first-run update or a transient download
   # failure without confirming app_update. Retry once in this same container.
   if [[ $attempt -eq 1 ]]; then
+    # SteamCMD's bootstrap currently points at a broken Akamai DNS alias on
+    # some networks. If it exited before opening its console, fetch its
+    # signed-by-hash bootstrap packages from Steam's reachable media mirror.
+    if ! grep -Fq "Steam Console Client" "$UPDATE_LOG"; then
+      seed_steamcmd_bootstrap_packages || true
+    fi
     continue
   fi
   break
 done
 if [[ $STEAMCMD_OK -ne 1 ]]; then
-  printf '%s\n' "${STEAMCMD_BUILD_ID:-unknown}" > "$UPDATE_BLOCKED"
+  printf '%s\n' "$STEAMCMD_BOOTSTRAP_ID" > "$UPDATE_BLOCKED"
   echo "ERROR: SteamCMD n'a pas confirmé la mise à jour. Le serveur ne démarre pas pour éviter une installation incomplète et les redémarrages en boucle."
   echo "Consulte $UPDATE_LOG; corrige l'accès Steam puis supprime $UPDATE_BLOCKED pour réessayer."
   exit 0
