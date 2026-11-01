@@ -95,16 +95,30 @@ seed_steamcmd_bootstrap_packages() {
 # metadata on the persistent Pterodactyl volume so later starts only fetch deltas.
 UPDATE_BLOCKED="$ROOT/.steamcmd-update-blocked"
 UPDATE_LOG="$ROOT/.steamcmd-update.log"
-STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-1"
+UPDATE_RETRY_COOLDOWN_SECONDS="${STEAMCMD_RETRY_COOLDOWN_SECONDS:-900}"
+STEAM_ACCOUNT_ID="anonymous"
+if [[ -n "${STEAM_USERNAME:-}" ]]; then
+  STEAM_ACCOUNT_ID="$(printf '%s' "$STEAM_USERNAME" | sha256sum | cut -c1-16)"
+fi
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-2-${STEAM_ACCOUNT_ID}"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
   if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
-    echo "ERROR: La dernière mise à jour Steam a échoué sur cette image; nouvelle tentative bloquée pour éviter une boucle."
-    echo "Après correction Steam, supprime $UPDATE_BLOCKED puis redémarre. Journal: $UPDATE_LOG"
-    exit 0
+    BLOCKED_AT="$(sed -n '2p' "$UPDATE_BLOCKED" 2>/dev/null || true)"
+    NOW="$(date +%s)"
+    if [[ "$BLOCKED_AT" =~ ^[0-9]+$ ]] && (( NOW - BLOCKED_AT < UPDATE_RETRY_COOLDOWN_SECONDS )); then
+      RETRY_IN=$((UPDATE_RETRY_COOLDOWN_SECONDS - (NOW - BLOCKED_AT)))
+      echo "ERROR: tentative Steam précédente échouée; nouvelle tentative automatique dans environ $(( (RETRY_IN + 59) / 60 )) min."
+      echo "Le changement de compte ou d'image autorise immédiatement une nouvelle tentative. Journal: $UPDATE_LOG"
+      exit 0
+    fi
+    echo "Délai de sécurité écoulé; nouvelle tentative Steam automatique."
+    rm -f "$UPDATE_BLOCKED"
   fi
-  echo "Nouvelle image SteamCMD détectée; nouvel essai de mise à jour autorisé."
-  rm -f "$UPDATE_BLOCKED"
+  if [[ -e "$UPDATE_BLOCKED" ]]; then
+    echo "Nouvelle image ou nouveau compte Steam détecté; nouvel essai de mise à jour autorisé."
+    rm -f "$UPDATE_BLOCKED"
+  fi
 fi
 if [[ ! -x "$STEAMCMD_BIN" ]]; then
   echo "ERROR: SteamCMD absent de l'image ($STEAMCMD_BIN). Reconstruis l'image Docker locale."
@@ -175,6 +189,22 @@ if [[ -d "$STEAMCMD_IMAGE_PACKAGE" ]]; then
   mkdir -p "$STEAMCMD_ACCOUNT_PACKAGE"
   cp -an "$STEAMCMD_IMAGE_PACKAGE/." "$STEAMCMD_ACCOUNT_PACKAGE/"
 fi
+
+# Complete SteamCMD's own bootstrap update before asking it to authenticate or
+# update SE2. Otherwise it can consume the first app_update invocation while
+# replacing itself and exit before reaching the Steam console.
+STEAMCMD_BOOTSTRAP_LOG="$ROOT/.steamcmd-bootstrap.log"
+echo "Préparation de SteamCMD avant la mise à jour du jeu."
+set +e
+HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" +quit 2>&1 | tee "$STEAMCMD_BOOTSTRAP_LOG"
+STEAMCMD_BOOTSTRAP_STATUS=${PIPESTATUS[0]}
+set -e
+if [[ $STEAMCMD_BOOTSTRAP_STATUS -ne 0 ]] || ! grep -Fq "Steam Console Client" "$STEAMCMD_BOOTSTRAP_LOG"; then
+  printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
+  echo "ERROR: SteamCMD n'a pas terminé son démarrage autonome. Journal: $STEAMCMD_BOOTSTRAP_LOG"
+  exit 0
+fi
+
 for attempt in 1 2; do
   if [[ $attempt -eq 2 ]]; then
     echo "SteamCMD s’est fermé sans confirmer SE2; nouvel essai unique après son auto-mise à jour."
@@ -207,9 +237,9 @@ for attempt in 1 2; do
   break
 done
 if [[ $STEAMCMD_OK -ne 1 ]]; then
-  printf '%s\n' "$STEAMCMD_BOOTSTRAP_ID" > "$UPDATE_BLOCKED"
+  printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
   echo "ERROR: SteamCMD n'a pas confirmé la mise à jour. Le serveur ne démarre pas pour éviter une installation incomplète et les redémarrages en boucle."
-  echo "Consulte $UPDATE_LOG; corrige l'accès Steam puis supprime $UPDATE_BLOCKED pour réessayer."
+  echo "Consulte $UPDATE_LOG; nouvel essai automatique après 15 min, ou immédiatement après changement d'image ou de compte."
   exit 0
 fi
 rm -f "$UPDATE_BLOCKED"
