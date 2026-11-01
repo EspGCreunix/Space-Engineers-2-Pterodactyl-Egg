@@ -100,7 +100,7 @@ STEAM_ACCOUNT_ID="anonymous"
 if [[ -n "${STEAM_USERNAME:-}" ]]; then
   STEAM_ACCOUNT_ID="$(printf '%s' "$STEAM_USERNAME" | sha256sum | cut -c1-16)"
 fi
-STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-2-${STEAM_ACCOUNT_ID}"
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-3-${STEAM_ACCOUNT_ID}"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
   if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
@@ -190,16 +190,32 @@ if [[ -d "$STEAMCMD_IMAGE_PACKAGE" ]]; then
   cp -an "$STEAMCMD_IMAGE_PACKAGE/." "$STEAMCMD_ACCOUNT_PACKAGE/"
 fi
 
-# Complete SteamCMD's own bootstrap update before asking it to authenticate or
-# update SE2. Otherwise it can consume the first app_update invocation while
-# replacing itself and exit before reaching the Steam console.
 STEAMCMD_BOOTSTRAP_LOG="$ROOT/.steamcmd-bootstrap.log"
-echo "Préparation de SteamCMD avant la mise à jour du jeu."
-set +e
-HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" +quit 2>&1 | tee "$STEAMCMD_BOOTSTRAP_LOG"
-STEAMCMD_BOOTSTRAP_STATUS=${PIPESTATUS[0]}
-set -e
-if [[ $STEAMCMD_BOOTSTRAP_STATUS -ne 0 ]] || ! grep -Fq "Steam Console Client" "$STEAMCMD_BOOTSTRAP_LOG"; then
+steamcmd_warmup() {
+  local warmup_attempt status attempt_log
+  : > "$STEAMCMD_BOOTSTRAP_LOG"
+  for warmup_attempt in 1 2; do
+    attempt_log="$ROOT/.steamcmd-bootstrap-attempt.log"
+    : > "$attempt_log"
+    echo "Préparation de SteamCMD avant la mise à jour du jeu (étape $warmup_attempt/2)."
+    set +e
+    HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" +quit 2>&1 | tee -a "$STEAMCMD_BOOTSTRAP_LOG" "$attempt_log"
+    status=${PIPESTATUS[0]}
+    set -e
+    if [[ $status -eq 0 ]] && grep -Fq "Steam Console Client" "$attempt_log"; then
+      return 0
+    fi
+    if [[ $warmup_attempt -eq 1 ]]; then
+      echo "SteamCMD n'a pas encore atteint sa console; vérification et récupération de ses paquets bootstrap."
+      seed_steamcmd_bootstrap_packages || true
+    fi
+  done
+  return 1
+}
+
+# Apply SteamCMD's own pending update separately; otherwise it can consume the
+# first app_update invocation and exit before reaching the Steam console.
+if ! steamcmd_warmup; then
   printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
   echo "ERROR: SteamCMD n'a pas terminé son démarrage autonome. Journal: $STEAMCMD_BOOTSTRAP_LOG"
   exit 0
@@ -231,6 +247,11 @@ for attempt in 1 2; do
     # signed-by-hash bootstrap packages from Steam's reachable media mirror.
     if ! grep -Fq "Steam Console Client" "$UPDATE_LOG"; then
       seed_steamcmd_bootstrap_packages || true
+      if ! steamcmd_warmup; then
+        printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
+        echo "ERROR: SteamCMD n'a pas terminé sa mise à jour bootstrap après récupération des paquets. Journal: $STEAMCMD_BOOTSTRAP_LOG"
+        exit 0
+      fi
     fi
     continue
   fi
