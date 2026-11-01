@@ -5,7 +5,7 @@ cd /home/container
 export TZ="${TZ:-UTC}"
 RUNNER_PATH=/home/container/run-se2online-pulsar.sh
 RUNNER_TMP="$(mktemp /home/container/.run-se2online-pulsar.XXXXXX)"
-if curl -fsSL --connect-timeout 5 --max-time 20 \
+if curl -fsSL --connect-timeout 3 --max-time 8 \
     https://raw.githubusercontent.com/EspGCreunix/se2online-pterodactyl/main/run-se2online-pulsar.sh \
     -o "$RUNNER_TMP"; then
   if [[ ! -f "$RUNNER_PATH" ]] || ! cmp -s "$RUNNER_TMP" "$RUNNER_PATH"; then

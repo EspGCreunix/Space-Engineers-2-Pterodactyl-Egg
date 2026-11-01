@@ -265,6 +265,7 @@ steamcmd_sync_home() {
 trap steamcmd_sync_home EXIT
 
 STEAMCMD_BOOTSTRAP_LOG="$ROOT/.steamcmd-bootstrap.log"
+STEAMCMD_WARMUP_MARKER="$STEAMCMD_PERSISTENT_HOME/.warmup-${STEAMCMD_IMAGE_BUILD_ID}-${STEAM_PLATFORM}"
 steamcmd_warmup() {
   local warmup_attempt status attempt_log
   : > "$STEAMCMD_BOOTSTRAP_LOG"
@@ -288,12 +289,19 @@ steamcmd_warmup() {
   return 1
 }
 
-# Apply SteamCMD's own pending update separately; otherwise it can consume the
-# first app_update invocation and exit before reaching the Steam console.
-if ! steamcmd_warmup; then
-  printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
-  echo "ERROR: SteamCMD n'a pas terminé son démarrage autonome. Journal: $STEAMCMD_BOOTSTRAP_LOG"
-  exit 0
+# SteamCMD's self-update is checked during app_update too. Warm it up only once
+# per image/account/platform; on later starts this avoids an extra SteamCMD
+# launch. The app_update retry path below still performs recovery if Valve has
+# published a new SteamCMD bootstrap since the marker was written.
+if [[ -f "$STEAMCMD_WARMUP_MARKER" ]]; then
+  echo "Préparation SteamCMD déjà effectuée pour cette image et ce compte; contrôle des mises à jour du jeu."
+else
+  if ! steamcmd_warmup; then
+    printf '%s\n%s\n' "$STEAMCMD_BOOTSTRAP_ID" "$(date +%s)" > "$UPDATE_BLOCKED"
+    echo "ERROR: SteamCMD n'a pas terminé son démarrage autonome. Journal: $STEAMCMD_BOOTSTRAP_LOG"
+    exit 0
+  fi
+  : > "$STEAMCMD_WARMUP_MARKER"
 fi
 
 for attempt in 1 2; do
