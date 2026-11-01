@@ -59,6 +59,36 @@
       "field_type": "text"
     },
     {
+      "name": "Game Mode",
+      "description": "Global world mode. Applied whenever the world loads. Changing it affects the current save; Survival is recommended for Classic Survival.",
+      "env_variable": "SE2_GAME_MODE",
+      "default_value": "Survival",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|in:Survival,Creative",
+      "field_type": "text"
+    },
+    {
+      "name": "Starting Scenario (new worlds only)",
+      "description": "Vanilla scenario content ID for a new world: ClassicSurvival, Survival, SurvivalNOFTUE, CRF, or EmptyWorld. Leave blank for the current SaveId/WorldName world. Changing this can start a different world; the old save is preserved.",
+      "env_variable": "SE2_START_CONTENT",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:128",
+      "field_type": "text"
+    },
+    {
+      "name": "Offer Vanilla Respawn Ships",
+      "description": "Adds the game's supported respawn ships to SE2 Online's first-spawn and respawn menu. The menu already offers the plugin's space ship and planetary lander by default.",
+      "env_variable": "SE2_VANILLA_RESPAWN_SHIPS",
+      "default_value": "0",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|boolean",
+      "field_type": "text"
+    },
+    {
       "name": "Steam Username (optional)",
       "description": "Steam account that owns Space Engineers 2. Leave blank to try anonymous access. Prefer a dedicated account; Pterodactyl stores this value and the server process can read it.",
       "env_variable": "STEAM_USERNAME",

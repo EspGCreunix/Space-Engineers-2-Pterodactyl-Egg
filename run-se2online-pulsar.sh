@@ -338,6 +338,54 @@ if [[ -n "${SERVER_PORT:-}" ]]; then
   echo "Network.ListenPort synchronisé avec l'allocation Pterodactyl : $SERVER_PORT (port de requête attendu : $((SERVER_PORT + 1)))."
 fi
 
+# Apply the Pterodactyl Startup choices to the dedicated config. Session mode
+# is stored in the world's GameModeObjectBuilder; StartContent is only a seed
+# for creating a new world and remains empty by default to preserve old saves.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "ERROR: python3 manque dans l'image pour appliquer les variables de jeu."
+  exit 2
+fi
+SE2_GAME_MODE="${SE2_GAME_MODE:-Survival}"
+SE2_START_CONTENT="${SE2_START_CONTENT:-}"
+SE2_VANILLA_RESPAWN_SHIPS="${SE2_VANILLA_RESPAWN_SHIPS:-0}"
+python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" <<'PY'
+import json, os, sys, tempfile
+
+path, mode, start_content, vanilla_ships = sys.argv[1:]
+if mode not in ("Survival", "Creative"):
+    raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
+if vanilla_ships.lower() not in ("0", "1", "false", "true", "off", "on"):
+    raise SystemExit("ERROR: SE2_VANILLA_RESPAWN_SHIPS doit être 0/1 ou true/false.")
+with open(path, "r", encoding="utf-8") as f:
+    cfg = json.load(f)
+if start_content and cfg.get("SaveId", "").strip():
+    raise SystemExit("ERROR: SE2_START_CONTENT ne peut pas être utilisé avec SaveId; vide SaveId pour démarrer un scénario neuf.")
+cfg["StartContent"] = start_content
+cfg.setdefault("SessionSettings", {})
+builder = cfg["SessionSettings"].setdefault(
+    "Keen.Game2.Simulation.GameSystems.Player.GameModeObjectBuilder", {})
+builder["CreativeGlobal"] = mode == "Creative"
+network = cfg.setdefault("Network", {})
+network["VanillaRespawnShips"] = vanilla_ships.lower() in ("1", "true", "on")
+directory = os.path.dirname(os.path.abspath(path))
+fd, tmp = tempfile.mkstemp(prefix=".server.json.", dir=directory, text=True)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+except BaseException:
+    try: os.unlink(tmp)
+    except FileNotFoundError: pass
+    raise
+print(f"Mode global SE2 : {mode}.")
+if start_content:
+    print(f"Scénario de départ pour un nouveau monde : {start_content}.")
+else:
+    print("Aucun scénario forcé; reprise du monde défini par SaveId/WorldName s'il existe.")
+print(f"Vaisseaux de respawn vanilla : {'activés' if network['VanillaRespawnShips'] else 'désactivés'}.")
+PY
+
 if ! command -v Xvfb >/dev/null 2>&1; then echo "ERROR: Xvfb manque dans l’image Linux."; exit 2; fi
 Xvfb :99 -screen 0 1024x768x24 -nolisten tcp -ac >/dev/null 2>&1 &
 XVFB_PID=$!

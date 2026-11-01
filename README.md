@@ -8,4 +8,6 @@ SteamCMD tries anonymous access by default. If Steam requires ownership of Space
 
 At each launch, the wrapper synchronizes `Network.ListenPort` with Pterodactyl's primary allocation (`SERVER_PORT`). Allocate the following UDP port as well for the game's query port. It also sets Pulsar's plugin compilation timeout to five minutes so LinuxCompat can compile on first start.
 
+The Pterodactyl **Startup** tab lets you select the global `Survival` or `Creative` mode. `Starting Scenario` accepts vanilla content IDs such as `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF`, or `EmptyWorld`; it is blank by default to resume the current save. Selecting a scenario starts a new world, while preserving the old save in the volume. Set it back to blank to use the configured `SaveId`/`WorldName` world. SE2 Online opens a first-spawn/respawn menu with a space ship, planetary lander, and accessible medbays; `Offer Vanilla Respawn Ships` adds vanilla ships. Planetary choices require a world that contains a planet.
+
 Import `egg-se2online-pterodactyl.json`. GitHub Actions publishes `ghcr.io/espgcreunix/se2online-pulsar:latest` after the first push to `main`; make that GHCR package public so Pterodactyl can pull it.

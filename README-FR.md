@@ -10,6 +10,9 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - L’état de SteamCMD est conservé dans `.steamcmd-home`, séparé de l’ancien cache Steam du serveur pour éviter qu’il perturbe son initialisation.
 - À chaque démarrage suivant, SteamCMD vérifie la version publiée et applique les mises à jour dans le même dossier persistant. Il n’utilise pas `validate`, qui recontrôlerait tous les fichiers.
 - À chaque démarrage, le lanceur règle `Network.ListenPort` sur le port principal attribué par Pterodactyl. Le port de requête attendu est le port suivant (`SERVER_PORT + 1`) : attribue aussi ce port au serveur dans **Network**.
+- L’onglet **Startup** permet de choisir le mode global `Survival` ou `Creative`. Le choix est appliqué au chargement du monde.
+- `Starting Scenario` accepte les identifiants vanilla `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF` ou `EmptyWorld`. Il est vide par défaut pour reprendre la sauvegarde actuelle. Choisir un scénario démarre un nouveau monde; l’ancienne sauvegarde reste dans le volume. Pour revenir au monde géré par `SaveId`/`WorldName`, remets le champ à vide.
+- SE2 Online affiche un menu de premier spawn et de respawn : vaisseau en espace, lander sur planète, ainsi que les médibays accessibles. La variable `Offer Vanilla Respawn Ships` ajoute les vaisseaux vanilla du jeu. Un choix sur planète n’est possible que si le scénario/sauvegarde contient une planète.
 - Le délai de compilation des plugins Pulsar/LinuxCompat est réglé automatiquement à cinq minutes pour laisser compiler ce grand plugin au premier démarrage.
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.
