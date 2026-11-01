@@ -6,6 +6,7 @@
   "EnableAutosave": true,
   "SaveIntervalSeconds": 300,
   "SaveOnExit": true,
+  "AutoUnloadDockedShips": false,
   "ShutdownCountdownSeconds": 60,
   "OwnerSteamIds": [],
   "Network": {

@@ -432,6 +432,7 @@ internal sealed partial class HostWorld : IHostWorld, IPingWorld
 		UpdatePings();
 		UpdateHacks(session);
 		UpdateTrades(session);
+		Y51_SE2Online.Dedicated.DockUnload.Tick(session);
 		UpdateWater(session);
 		UpdatePunches();
 		UpdateVoicePositions();

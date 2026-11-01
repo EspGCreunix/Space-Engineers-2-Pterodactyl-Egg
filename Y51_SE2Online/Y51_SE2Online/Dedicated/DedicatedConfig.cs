@@ -24,6 +24,8 @@ public sealed class DedicatedConfig
     public bool? PlayMission { get; set; }
     public int SaveIntervalSeconds { get; set; } = 300;
     public bool SaveOnExit { get; set; } = true;
+    /// <summary>When a moving ship docks to a static grid, move items from its cargo containers/connectors into cargo containers on the static grid.</summary>
+    public bool AutoUnloadDockedShips { get; set; }
     /// <summary>Seconds of chat warnings before a stop while players are online; 0 stops at once.</summary>
     public int ShutdownCountdownSeconds { get; set; } = 60;
     [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
