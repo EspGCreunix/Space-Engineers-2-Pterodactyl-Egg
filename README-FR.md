@@ -25,6 +25,10 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.
 
+### Passer à une sauvegarde importée
+
+Arrête le serveur et sauvegarde le monde avant de changer de partie. Copie le dossier complet de la sauvegarde dans `/home/container/.config/SpaceEngineers2/AppData/SaveGames`. Dans l’onglet **Startup** de Pterodactyl, vide `Starting Scenario (new worlds only)`. Dans `/home/container/server.json`, vide `StartContent` et `StartWorkshop` (ou supprime ces clés), puis règle `WorldName` sur le nom affiché de la sauvegarde ou `SaveId` sur l’identifiant exact de son dossier. Sauvegarde puis renomme `/home/container/dedicated-state.json` afin que le serveur ne tente pas de reprendre l’ancien monde. Redémarre : le serveur choisira la sauvegarde importée avec `SaveId` ou `WorldName`. Si un scénario reste sélectionné, le serveur lancera ce scénario à la place de la sauvegarde importée.
+
 ## Publication de l’image
 
 Le workflow GitHub Actions construit et publie `ghcr.io/espgcreunix/se2online-pulsar:latest` sur un push dans `main`.

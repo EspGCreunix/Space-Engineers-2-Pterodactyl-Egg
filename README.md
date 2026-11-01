@@ -10,6 +10,10 @@ At each launch, the wrapper synchronizes `Network.ListenPort` with Pterodactyl's
 
 The Pterodactyl **Startup** tab lets you select the global `Survival` or `Creative` mode. `Starting Scenario` accepts vanilla content IDs such as `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF`, or `EmptyWorld`; it is blank by default to resume the current save. Selecting a scenario starts a new world, while preserving the old save in the volume. Set it back to blank to use the configured `SaveId`/`WorldName` world. SE2 Online opens a first-spawn/respawn menu with a space ship, planetary lander, and accessible medbays; `Offer Vanilla Respawn Ships` adds vanilla ships. Planetary choices require a world that contains a planet.
 
+### Switching to an imported save
+
+Stop the server and back up the save before switching worlds. Copy the complete save folder into `/home/container/.config/SpaceEngineers2/AppData/SaveGames`. In Pterodactyl **Startup**, clear `Starting Scenario (new worlds only)`. In `/home/container/server.json`, clear `StartContent` and `StartWorkshop` (or remove those keys), then set `WorldName` to the save's displayed name or `SaveId` to its exact save-folder ID. Back up and rename `/home/container/dedicated-state.json` so the server does not resume the previous save ID. Start the server; it will select the imported save by `SaveId` or `WorldName`. Leaving a scenario selected starts that scenario instead of loading the imported save.
+
 The optional **Server Name** Startup variable overrides `Network.SessionName`. Leave it blank to manage the name directly in `server.json`.
 
 `Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and assigns those players to the SE2 Online `Admin` group in `Permissions/players.json`, mirrored to `access.json`. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
