@@ -100,7 +100,7 @@ STEAM_ACCOUNT_ID="anonymous"
 if [[ -n "${STEAM_USERNAME:-}" ]]; then
   STEAM_ACCOUNT_ID="$(printf '%s' "$STEAM_USERNAME" | sha256sum | cut -c1-16)"
 fi
-STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-3-${STEAM_ACCOUNT_ID}"
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-4-${STEAM_ACCOUNT_ID}"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
   if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
@@ -190,6 +190,28 @@ if [[ -d "$STEAMCMD_IMAGE_PACKAGE" ]]; then
   cp -an "$STEAMCMD_IMAGE_PACKAGE/." "$STEAMCMD_ACCOUNT_PACKAGE/"
 fi
 
+# SteamCMD's updater stalls when its HOME is used directly from the Pterodactyl
+# bind mount. Run from a writable temporary copy, then persist account state on
+# exit. The game install directory remains on the persistent server volume.
+STEAMCMD_PERSISTENT_HOME="$STEAMCMD_HOME"
+STEAMCMD_RUNTIME_HOME="$(mktemp -d /tmp/se2-steamcmd-home.XXXXXX)"
+cp -R "$STEAMCMD_PERSISTENT_HOME/." "$STEAMCMD_RUNTIME_HOME/"
+STEAMCMD_HOME="$STEAMCMD_RUNTIME_HOME"
+steamcmd_persist_home() {
+  if [[ -n "${STEAMCMD_RUNTIME_HOME:-}" && -d "$STEAMCMD_RUNTIME_HOME" ]]; then
+    mkdir -p "$STEAMCMD_PERSISTENT_HOME"
+    cp -R "$STEAMCMD_RUNTIME_HOME/." "$STEAMCMD_PERSISTENT_HOME/" || \
+      echo "WARNING: impossible de recopier entièrement l'état SteamCMD dans $STEAMCMD_PERSISTENT_HOME" >&2
+  fi
+}
+steamcmd_sync_home() {
+  if [[ -n "${STEAMCMD_RUNTIME_HOME:-}" && -d "$STEAMCMD_RUNTIME_HOME" ]]; then
+    steamcmd_persist_home
+    rm -rf -- "$STEAMCMD_RUNTIME_HOME"
+  fi
+}
+trap steamcmd_sync_home EXIT
+
 STEAMCMD_BOOTSTRAP_LOG="$ROOT/.steamcmd-bootstrap.log"
 steamcmd_warmup() {
   local warmup_attempt status attempt_log
@@ -202,6 +224,7 @@ steamcmd_warmup() {
     HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" +quit 2>&1 | tee -a "$STEAMCMD_BOOTSTRAP_LOG" "$attempt_log"
     status=${PIPESTATUS[0]}
     set -e
+    steamcmd_persist_home
     if [[ $status -eq 0 ]] && grep -Fq "Steam Console Client" "$attempt_log"; then
       return 0
     fi
@@ -235,6 +258,7 @@ for attempt in 1 2; do
   HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" "${STEAMCMD_ARGS[@]}" 2>&1 | tee -a "$UPDATE_LOG"
   STEAMCMD_STATUS=${PIPESTATUS[0]}
   set -e
+  steamcmd_persist_home
   if [[ $STEAMCMD_STATUS -eq 0 ]] && grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then
     STEAMCMD_OK=1
     break
@@ -274,7 +298,7 @@ if [[ ! -f "$ROOT/Y51_SE2Online/Y51_SE2Online.xml" ]]; then echo "ERROR: descrip
 if ! command -v Xvfb >/dev/null 2>&1; then echo "ERROR: Xvfb manque dans l’image Linux."; exit 2; fi
 Xvfb :99 -screen 0 1024x768x24 -nolisten tcp -ac >/dev/null 2>&1 &
 XVFB_PID=$!
-trap 'kill "$XVFB_PID" 2>/dev/null || true' EXIT
+trap 'kill "$XVFB_PID" 2>/dev/null || true; steamcmd_sync_home' EXIT
 sleep 1
 if ! kill -0 "$XVFB_PID" 2>/dev/null; then echo "ERROR: le serveur X virtuel Pulsar n’a pas démarré."; exit 2; fi
 export DISPLAY=:99
