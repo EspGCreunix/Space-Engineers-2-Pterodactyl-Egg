@@ -8,7 +8,7 @@ ARG STEAMCMD_BUILD_ID=7
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    ca-certificates curl tar git iproute2 tzdata python3-minimal libicu76 libvulkan1 mesa-vulkan-drivers \
+    ca-certificates curl tar git iproute2 tzdata python3 libicu76 libvulkan1 mesa-vulkan-drivers \
     libc6-i386 lib32gcc-s1 lib32stdc++6 \
     libx11-6 libxext6 libxrender1 libxrandr2 libxi6 libxcursor1 libxfixes3 \
     libfontconfig1 libfreetype6 libice6 libsm6 \
