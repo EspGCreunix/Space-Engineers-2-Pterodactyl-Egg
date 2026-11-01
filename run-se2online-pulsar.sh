@@ -13,20 +13,22 @@ export STEAM_PLATFORM="${STEAM_PLATFORM:-linux64}"
 
 seed_steamcmd_bootstrap_packages() {
   local package_dir="$STEAMCMD_HOME/Steam/package"
-  local legacy_package_dir="$HOME/Steam/package"
+  local legacy_package_dir
   local manifest="$package_dir/steam_cmd_steamrt64"
   local name hash tmp cached parsed=0
   local -a cached_packages=()
+  local -a legacy_package_dirs=("$ROOT/.steamcmd-home/Steam/package" "$HOME/Steam/package")
 
   mkdir -p "$package_dir"
-  if [[ "$legacy_package_dir" != "$package_dir" && -d "$legacy_package_dir" ]]; then
+  for legacy_package_dir in "${legacy_package_dirs[@]}"; do
+    [[ "$legacy_package_dir" != "$package_dir" && -d "$legacy_package_dir" ]] || continue
     shopt -s nullglob
     cached_packages=("$legacy_package_dir"/*)
     shopt -u nullglob
     for cached in "${cached_packages[@]}"; do
       [[ -f "$cached" ]] && cp -n "$cached" "$package_dir/"
     done
-  fi
+  done
   if [[ ! -s "$manifest" ]] || ! grep -Fq '"steamrt64"' "$manifest"; then
     tmp="$manifest.download"
     echo "Récupération du manifeste SteamCMD depuis client-update.steamstatic.com."
@@ -111,8 +113,6 @@ fi
 mkdir -p "$GAME_ROOT" "$ROOT/.home"
 export HOME="${HOME:-$ROOT/.home}"
 mkdir -p "$HOME"
-export STEAMCMD_HOME="${STEAMCMD_HOME:-$ROOT/.steamcmd-home}"
-mkdir -p "$STEAMCMD_HOME"
 
 # SteamAPI looks in the user's sdk64 directory. The redistributable library is
 # installed by SteamCMD in the image; seed it into the persistent container home.
@@ -143,6 +143,10 @@ if [[ -n "${STEAM_USERNAME:-}" ]]; then
     exit 2
   fi
   STEAM_LOGIN_ARGS=(+login "$STEAM_USERNAME" "$STEAM_PASSWORD")
+  if [[ -z "${STEAMCMD_HOME:-}" ]]; then
+    STEAM_ACCOUNT_HOME="$(printf '%s' "$STEAM_USERNAME" | sha256sum | cut -c1-16)"
+    export STEAMCMD_HOME="$ROOT/.steamcmd-home/account-$STEAM_ACCOUNT_HOME"
+  fi
   if [[ -n "${STEAM_GUARD_CODE:-}" ]]; then
     STEAM_LOGIN_ARGS+=("$STEAM_GUARD_CODE")
   else
@@ -156,8 +160,12 @@ elif [[ -n "${STEAM_PASSWORD:-}" || -n "${STEAM_GUARD_CODE:-}" ]]; then
   echo "ERROR: renseigne STEAM_USERNAME avec le mot de passe ou le code Steam Guard."
   exit 2
 else
+  if [[ -z "${STEAMCMD_HOME:-}" ]]; then
+    export STEAMCMD_HOME="$ROOT/.steamcmd-home/anonymous"
+  fi
   echo "Aucun compte configuré; essai de connexion anonyme à Steam."
 fi
+mkdir -p "$STEAMCMD_HOME"
 for attempt in 1 2; do
   if [[ $attempt -eq 2 ]]; then
     echo "SteamCMD s’est fermé sans confirmer SE2; nouvel essai unique après son auto-mise à jour."
