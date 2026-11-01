@@ -7,8 +7,10 @@
   "SaveIntervalSeconds": 300,
   "SaveOnExit": true,
   "ShutdownCountdownSeconds": 60,
+  "OwnerSteamIds": [],
   "Network": {
     "SessionName": "SE2 Online Server",
+    "Password": "",
     "Advertise": true,
     "FriendsOnly": false,
     "AllowDirectIp": true,

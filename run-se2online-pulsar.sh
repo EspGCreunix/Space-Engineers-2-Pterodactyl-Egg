@@ -29,6 +29,7 @@ if [[ ! -f "$CONFIG" ]]; then
   "ShutdownCountdownSeconds": 60,
   "Network": {
     "SessionName": "SE2 Online Server",
+    "Password": "",
     "Advertise": true,
     "FriendsOnly": false,
     "AllowDirectIp": true,
@@ -383,16 +384,24 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 SE2_GAME_MODE="${SE2_GAME_MODE:-Survival}"
 SE2_SERVER_NAME="${SE2_SERVER_NAME:-SE2 Online Server}"
+SE2_SERVER_PASSWORD="${SE2_SERVER_PASSWORD:-}"
+SE2_ADMIN_STEAM_IDS="${SE2_ADMIN_STEAM_IDS:-}"
 SE2_START_CONTENT="${SE2_START_CONTENT:-}"
 SE2_VANILLA_RESPAWN_SHIPS="${SE2_VANILLA_RESPAWN_SHIPS:-0}"
-python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" <<'PY'
-import json, os, sys, tempfile
+python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_SERVER_PASSWORD" "$SE2_ADMIN_STEAM_IDS" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" <<'PY'
+import json, os, re, sys, tempfile
 
-path, mode, server_name, start_content, vanilla_ships = sys.argv[1:]
+path, mode, server_name, server_password, admin_ids_raw, start_content, vanilla_ships = sys.argv[1:]
 if mode not in ("Survival", "Creative"):
     raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
 if not server_name.strip() or len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):
     raise SystemExit("ERROR: SE2_SERVER_NAME doit contenir de 1 à 100 caractères sans saut de ligne.")
+if len(server_password) > 64 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_password):
+    raise SystemExit("ERROR: SE2_SERVER_PASSWORD doit contenir au plus 64 caractères sans caractère de contrôle.")
+admin_ids = [item for item in re.split(r"[,;\s]+", admin_ids_raw.strip()) if item]
+if any(not re.fullmatch(r"7656119\d{10}", item) for item in admin_ids):
+    raise SystemExit("ERROR: SE2_ADMIN_STEAM_IDS doit contenir des SteamID64 de 17 chiffres commençant par 7656119, séparés par des virgules.")
+admin_ids = list(dict.fromkeys(int(item) for item in admin_ids))
 if vanilla_ships.lower() not in ("0", "1", "false", "true", "off", "on"):
     raise SystemExit("ERROR: SE2_VANILLA_RESPAWN_SHIPS doit être 0/1 ou true/false.")
 with open(path, "r", encoding="utf-8") as f:
@@ -400,12 +409,14 @@ with open(path, "r", encoding="utf-8") as f:
 if start_content and cfg.get("SaveId", "").strip():
     raise SystemExit("ERROR: SE2_START_CONTENT ne peut pas être utilisé avec SaveId; vide SaveId pour démarrer un scénario neuf.")
 cfg["StartContent"] = start_content
+cfg["OwnerSteamIds"] = admin_ids
 cfg.setdefault("SessionSettings", {})
 builder = cfg["SessionSettings"].setdefault(
     "Keen.Game2.Simulation.GameSystems.Player.GameModeObjectBuilder", {})
 builder["CreativeGlobal"] = mode == "Creative"
 network = cfg.setdefault("Network", {})
 network["SessionName"] = server_name.strip()
+network["Password"] = server_password
 network["VanillaRespawnShips"] = vanilla_ships.lower() in ("1", "true", "on")
 directory = os.path.dirname(os.path.abspath(path))
 fd, tmp = tempfile.mkstemp(prefix=".server.json.", dir=directory, text=True)
@@ -420,6 +431,8 @@ except BaseException:
     raise
 print(f"Mode global SE2 : {mode}.")
 print(f"Nom du serveur : {network['SessionName']}.")
+print(f"Mot de passe de connexion : {'configuré' if server_password else 'aucun'}.")
+print(f"Admins/owners configurés par SteamID64 : {len(admin_ids)}.")
 if start_content:
     print(f"Scénario de départ pour un nouveau monde : {start_content}.")
 else:

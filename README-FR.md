@@ -9,9 +9,13 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - Le lanceur choisit SteamCMD 64 bits pour appliquer son manifeste SteamRT64. Si le CDN de démarrage Steam est indisponible, il récupère les paquets depuis le miroir officiel `media.steampowered.com` et vérifie leurs empreintes avant de relancer SteamCMD.
 - L’état de SteamCMD est conservé dans `.steamcmd-home`, séparé de l’ancien cache Steam du serveur pour éviter qu’il perturbe son initialisation.
 - À chaque démarrage suivant, SteamCMD vérifie la version publiée et applique les mises à jour dans le même dossier persistant. Il n’utilise pas `validate`, qui recontrôlerait tous les fichiers.
+- Au démarrage, l’image récupère le lanceur actuel depuis la branche `main` de GitHub. Si GitHub est inaccessible, elle garde le lanceur déjà installé.
 - À chaque démarrage, le lanceur règle `Network.ListenPort` sur le port principal attribué par Pterodactyl. Le port de requête attendu est le port suivant (`SERVER_PORT + 1`) : attribue aussi ce port au serveur dans **Network**.
 - L’onglet **Startup** permet de choisir le mode global `Survival` ou `Creative`. Le choix est appliqué au chargement du monde.
 - La variable **Server Name** règle le nom affiché dans la liste des serveurs Space Engineers 2.
+- **Server Password** définit le mot de passe demandé aux joueurs à la connexion; vide, le serveur reste ouvert.
+- **Admin Steam IDs** accepte une liste d’identifiants SteamID64 séparés par des virgules. Ces joueurs reçoivent les permissions Owner complètes de SE2 Online; laisse vide s’il n’y en a pas.
+- L’egg ne peut pas retirer l’affinité CPU imposée par Docker/Wings. Si `docker inspect` montre `Cpuset=0`, le conteneur est épinglé au processeur logique 0; retire le CPU pinning dans la configuration de l’hôte. Ajouter des threads ou modifier .NET dans l’image ne contourne pas cette restriction.
 - Si `server.json` est absent, le lanceur le recrée automatiquement avec une configuration Survival par défaut, puis applique les variables de démarrage Pterodactyl et le port alloué.
 - `Starting Scenario` accepte les identifiants vanilla `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF` ou `EmptyWorld`. Il est vide par défaut pour reprendre la sauvegarde actuelle. Choisir un scénario démarre un nouveau monde; l’ancienne sauvegarde reste dans le volume. Pour revenir au monde géré par `SaveId`/`WorldName`, remets le champ à vide.
 - SE2 Online affiche un menu de premier spawn et de respawn : vaisseau en espace, lander sur planète, ainsi que les médibays accessibles. La variable `Offer Vanilla Respawn Ships` ajoute les vaisseaux vanilla du jeu. Un choix sur planète n’est possible que si le scénario/sauvegarde contient une planète.
@@ -29,6 +33,8 @@ Après le premier push :
 2. Dans GitHub, ouvrir le package `se2online-pulsar` et régler sa visibilité sur **Public**. Le dépôt public ne rend pas automatiquement le package GHCR public.
 3. Importer `egg-se2online-pterodactyl.json` dans Pterodactyl.
 4. Créer un serveur avec cet egg, attribuer une allocation UDP principale et aussi le port UDP suivant pour les requêtes. Le lanceur synchronise automatiquement `Network.ListenPort` avec le port principal Pterodactyl. Le téléchargement initial du jeu peut être volumineux.
+
+Après une mise à jour de l’egg, réimporte le JSON dans Pterodactyl pour faire apparaître ses nouveaux champs Startup sur les serveurs existants; le lanceur et l’image se mettent ensuite à jour au prochain démarrage.
 
 ## Accès Steam
 

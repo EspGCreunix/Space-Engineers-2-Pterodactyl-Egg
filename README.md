@@ -12,6 +12,10 @@ The Pterodactyl **Startup** tab lets you select the global `Survival` or `Creati
 
 The **Server Name** Startup variable sets the name shown in the Space Engineers 2 server browser.
 
+`Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and grants those players SE2 Online Owner permissions. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
+
 If `server.json` is missing, the launcher recreates a default Survival configuration, then applies the Pterodactyl Startup variables and allocated server port.
 
 Import `egg-se2online-pterodactyl.json`. GitHub Actions publishes `ghcr.io/espgcreunix/se2online-pulsar:latest` after the first push to `main`; make that GHCR package public so Pterodactyl can pull it.
+
+The image refreshes the server-side launcher from the repository's `main` branch at startup, falling back to the installed copy if GitHub is unavailable. Reimport the egg JSON in Pterodactyl to expose new Startup variables on existing servers.
