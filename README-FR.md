@@ -12,9 +12,9 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - Au démarrage, l’image récupère le lanceur actuel depuis la branche `main` de GitHub. Si GitHub est inaccessible, elle garde le lanceur déjà installé.
 - À chaque démarrage, le lanceur règle `Network.ListenPort` sur le port principal attribué par Pterodactyl. Le port de requête attendu est le port suivant (`SERVER_PORT + 1`) : attribue aussi ce port au serveur dans **Network**.
 - L’onglet **Startup** permet de choisir le mode global `Survival` ou `Creative`. Le choix est appliqué au chargement du monde.
-- La variable **Server Name** règle le nom affiché dans la liste des serveurs Space Engineers 2.
+- **Server Name** est une surcharge facultative de `Network.SessionName`. Laisse la variable vide pour régler le nom directement dans `server.json`.
 - **Server Password** définit le mot de passe demandé aux joueurs à la connexion; vide, le serveur reste ouvert.
-- **Admin Steam IDs** accepte une liste d’identifiants SteamID64 séparés par des virgules. Ces joueurs reçoivent les permissions Owner complètes de SE2 Online; laisse vide s’il n’y en a pas.
+- **Admin Steam IDs** accepte une liste d’identifiants SteamID64 séparés par des virgules. Le lanceur inscrit ces comptes dans le groupe `Admin` de `Permissions/players.json` et les reflète dans `access.json`; ils ne sont pas ajoutés aux Owner Steam IDs.
 - L’egg ne peut pas retirer l’affinité CPU imposée par Docker/Wings. Si `docker inspect` montre `Cpuset=0`, le conteneur est épinglé au processeur logique 0; retire le CPU pinning dans la configuration de l’hôte. Ajouter des threads ou modifier .NET dans l’image ne contourne pas cette restriction.
 - Les variables `Game Worker Threads` (`0` = choix automatique, recommandé) et `Tick Catch-up (ms)` règlent les options du serveur dédié. Mettre `Tick Catch-up (ms)` à `0` évite les grosses rafales de rattrapage après un blocage, mais ne donne pas plus de CPU et peut ralentir la simulation quand le serveur est chargé. Ne mets pas toutes les valeurs à `0` au hasard.
 - Si `server.json` est absent, le lanceur le recrée automatiquement avec une configuration Survival par défaut, puis applique les variables de démarrage Pterodactyl et le port alloué.

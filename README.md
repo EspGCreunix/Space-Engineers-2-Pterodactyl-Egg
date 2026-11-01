@@ -10,9 +10,9 @@ At each launch, the wrapper synchronizes `Network.ListenPort` with Pterodactyl's
 
 The Pterodactyl **Startup** tab lets you select the global `Survival` or `Creative` mode. `Starting Scenario` accepts vanilla content IDs such as `ClassicSurvival`, `Survival`, `SurvivalNOFTUE`, `CRF`, or `EmptyWorld`; it is blank by default to resume the current save. Selecting a scenario starts a new world, while preserving the old save in the volume. Set it back to blank to use the configured `SaveId`/`WorldName` world. SE2 Online opens a first-spawn/respawn menu with a space ship, planetary lander, and accessible medbays; `Offer Vanilla Respawn Ships` adds vanilla ships. Planetary choices require a world that contains a planet.
 
-The **Server Name** Startup variable sets the name shown in the Space Engineers 2 server browser.
+The optional **Server Name** Startup variable overrides `Network.SessionName`. Leave it blank to manage the name directly in `server.json`.
 
-`Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and grants those players SE2 Online Owner permissions. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
+`Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and assigns those players to the SE2 Online `Admin` group in `Permissions/players.json`, mirrored to `access.json`. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
 
 `Game Worker Threads` defaults to `0`, which lets the game choose its worker count. `Tick Catch-up (ms)` defaults to `1000`; setting it to `0` disables large catch-up bursts after a stall, but does not add CPU and can make simulation fall behind under load. Avoid setting every performance value to zero without checking what it controls.
 

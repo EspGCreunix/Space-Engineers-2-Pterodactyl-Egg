@@ -60,12 +60,12 @@
     },
     {
       "name": "Server Name",
-      "description": "Name shown in the Space Engineers 2 server browser.",
+      "description": "Optional override for Network.SessionName. Leave blank to use the value in server.json.",
       "env_variable": "SE2_SERVER_NAME",
-      "default_value": "SE2 Online Server",
+      "default_value": "",
       "user_viewable": true,
       "user_editable": true,
-      "rules": "required|string|max:100",
+      "rules": "nullable|string|max:100",
       "field_type": "text"
     },
     {
@@ -80,7 +80,7 @@
     },
     {
       "name": "Admin Steam IDs",
-      "description": "Comma-separated SteamID64 values (17 digits, starting with 7656119). These players receive Owner-level permissions. Leave blank for none.",
+      "description": "Comma-separated SteamID64 values (17 digits, starting with 7656119). Adds these players to the SE2 Online Admin group in Permissions/players.json and mirrors them to access.json. Leave blank for none.",
       "env_variable": "SE2_ADMIN_STEAM_IDS",
       "default_value": "",
       "user_viewable": true,

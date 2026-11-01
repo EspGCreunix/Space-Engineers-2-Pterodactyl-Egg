@@ -391,7 +391,7 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 2
 fi
 SE2_GAME_MODE="${SE2_GAME_MODE:-Survival}"
-SE2_SERVER_NAME="${SE2_SERVER_NAME:-SE2 Online Server}"
+SE2_SERVER_NAME="${SE2_SERVER_NAME:-}"
 SE2_SERVER_PASSWORD="${SE2_SERVER_PASSWORD:-}"
 SE2_ADMIN_STEAM_IDS="${SE2_ADMIN_STEAM_IDS:-}"
 SE2_START_CONTENT="${SE2_START_CONTENT:-}"
@@ -404,14 +404,14 @@ import json, os, re, sys, tempfile
 path, mode, server_name, server_password, admin_ids_raw, start_content, vanilla_ships, worker_threads_raw, catch_up_raw = sys.argv[1:]
 if mode not in ("Survival", "Creative"):
     raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
-if not server_name.strip() or len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):
-    raise SystemExit("ERROR: SE2_SERVER_NAME doit contenir de 1 à 100 caractères sans saut de ligne.")
+if len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):
+    raise SystemExit("ERROR: SE2_SERVER_NAME doit contenir au plus 100 caractères sans saut de ligne; vide pour garder Network.SessionName dans server.json.")
 if len(server_password) > 64 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_password):
     raise SystemExit("ERROR: SE2_SERVER_PASSWORD doit contenir au plus 64 caractères sans caractère de contrôle.")
 admin_ids = [item for item in re.split(r"[,;\s]+", admin_ids_raw.strip()) if item]
 if any(not re.fullmatch(r"7656119\d{10}", item) for item in admin_ids):
     raise SystemExit("ERROR: SE2_ADMIN_STEAM_IDS doit contenir des SteamID64 de 17 chiffres commençant par 7656119, séparés par des virgules.")
-admin_ids = list(dict.fromkeys(int(item) for item in admin_ids))
+admin_ids = list(dict.fromkeys(admin_ids))
 if vanilla_ships.lower() not in ("0", "1", "false", "true", "off", "on"):
     raise SystemExit("ERROR: SE2_VANILLA_RESPAWN_SHIPS doit être 0/1 ou true/false.")
 try:
@@ -428,7 +428,9 @@ with open(path, "r", encoding="utf-8") as f:
 if start_content and cfg.get("SaveId", "").strip():
     raise SystemExit("ERROR: SE2_START_CONTENT ne peut pas être utilisé avec SaveId; vide SaveId pour démarrer un scénario neuf.")
 cfg["StartContent"] = start_content
-cfg["OwnerSteamIds"] = admin_ids
+# Admins belong in the permission system's Admin group, not in the stronger
+# OwnerSteamIds bypass list. Keep that list empty when migrating old egg values.
+cfg["OwnerSteamIds"] = []
 cfg["WorkerThreads"] = worker_threads
 cfg["CatchUpMs"] = catch_up_ms
 cfg.setdefault("SessionSettings", {})
@@ -436,7 +438,10 @@ builder = cfg["SessionSettings"].setdefault(
     "Keen.Game2.Simulation.GameSystems.Player.GameModeObjectBuilder", {})
 builder["CreativeGlobal"] = mode == "Creative"
 network = cfg.setdefault("Network", {})
-network["SessionName"] = server_name.strip()
+if server_name.strip():
+    network["SessionName"] = server_name.strip()
+else:
+    network.setdefault("SessionName", "SE2 Online Server")
 network["Password"] = server_password
 network["VanillaRespawnShips"] = vanilla_ships.lower() in ("1", "true", "on")
 directory = os.path.dirname(os.path.abspath(path))
@@ -450,10 +455,109 @@ except BaseException:
     try: os.unlink(tmp)
     except FileNotFoundError: pass
     raise
+
+# Populate the Admin group used by SE2 Online and mirror these IDs into
+# access.json, as the plugin reconciles players.json against that list at load.
+# Keep snapshots so changing the Pterodactyl variable can undo only our entries.
+permissions_dir = os.path.join(directory, "Permissions")
+players_path = os.path.join(permissions_dir, "players.json")
+access_path = os.path.join(directory, "access.json")
+managed_path = os.path.join(permissions_dir, ".pterodactyl-admin-steam-ids.json")
+os.makedirs(permissions_dir, exist_ok=True)
+try:
+    with open(players_path, "r", encoding="utf-8") as f:
+        player_file = json.load(f)
+except FileNotFoundError:
+    player_file = {"Version": 1, "Players": {}, "MirroredAdmins": []}
+if not isinstance(player_file, dict):
+    raise SystemExit("ERROR: Permissions/players.json doit contenir un objet JSON.")
+player_file.setdefault("Version", 1)
+player_file.setdefault("Players", {})
+player_file.setdefault("MirroredAdmins", [])
+if not isinstance(player_file["Players"], dict) or not isinstance(player_file["MirroredAdmins"], list):
+    raise SystemExit("ERROR: Permissions/players.json doit contenir Players (objet) et MirroredAdmins (liste).")
+try:
+    with open(managed_path, "r", encoding="utf-8") as f:
+        previous_managed = json.load(f)
+except FileNotFoundError:
+    previous_managed = {}
+if not isinstance(previous_managed, dict):
+    raise SystemExit("ERROR: le suivi des admins Pterodactyl est invalide; sauvegarde-le puis supprime Permissions/.pterodactyl-admin-steam-ids.json.")
+managed_players = previous_managed.get("Players", {})
+managed_access = previous_managed.get("AccessAdmins", {})
+if not isinstance(managed_players, dict) or not isinstance(managed_access, dict):
+    raise SystemExit("ERROR: le suivi des admins Pterodactyl est invalide; sauvegarde-le puis supprime Permissions/.pterodactyl-admin-steam-ids.json.")
+current = set(admin_ids)
+try:
+    with open(access_path, "r", encoding="utf-8") as f:
+        access_file = json.load(f)
+except FileNotFoundError:
+    access_file = {"Version": 1, "Admins": [], "Bans": [], "Whitelist": []}
+if not isinstance(access_file, dict) or not isinstance(access_file.get("Admins", []), list):
+    raise SystemExit("ERROR: access.json doit contenir Admins sous forme de liste.")
+access_file.setdefault("Admins", [])
+for steam_id, record in managed_players.items():
+    if steam_id not in current:
+        if player_file["Players"].get(steam_id) == record.get("managed"):
+            previous = record.get("previous")
+            if previous is None:
+                player_file["Players"].pop(steam_id, None)
+            else:
+                player_file["Players"][steam_id] = previous
+for steam_id, record in managed_access.items():
+    if steam_id not in current:
+        admins = access_file["Admins"]
+        index = next((i for i, item in enumerate(admins) if isinstance(item, dict) and str(item.get("SteamId", "")) == steam_id), None)
+        if index is not None:
+            previous = record.get("previous")
+            if previous is None:
+                admins.pop(index)
+            else:
+                admins[index] = previous
+next_managed_players = {}
+next_managed_access = {}
+for steam_id in admin_ids:
+    previous_record = managed_players.get(steam_id)
+    previous = previous_record.get("previous") if previous_record is not None else player_file["Players"].get(steam_id)
+    existing = player_file["Players"].get(steam_id)
+    if not isinstance(existing, dict):
+        existing = {}
+    assignment = dict(existing)
+    assignment["Group"] = "Admin"
+    assignment.setdefault("Name", "")
+    player_file["Players"][steam_id] = assignment
+    next_managed_players[steam_id] = {"previous": previous, "managed": assignment}
+    admins = access_file["Admins"]
+    access_index = next((i for i, item in enumerate(admins) if isinstance(item, dict) and str(item.get("SteamId", "")) == steam_id), None)
+    previous_access_record = managed_access.get(steam_id)
+    if previous_access_record is not None:
+        # The game may fill in a real player name after first launch; keep managing
+        # membership by SteamID while retaining the original entry for removal.
+        if access_index is None:
+            admins.append(previous_access_record["managed"])
+        next_managed_access[steam_id] = previous_access_record
+    elif access_index is None:
+        access_entry = {"SteamId": int(steam_id), "Name": ""}
+        admins.append(access_entry)
+        next_managed_access[steam_id] = {"previous": None, "managed": access_entry}
+def atomic_json(target, data):
+    fd, tmp = tempfile.mkstemp(prefix="." + os.path.basename(target) + ".", dir=os.path.dirname(target), text=True)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        os.replace(tmp, target)
+    except BaseException:
+        try: os.unlink(tmp)
+        except FileNotFoundError: pass
+        raise
+atomic_json(players_path, player_file)
+atomic_json(access_path, access_file)
+atomic_json(managed_path, {"Version": 1, "Players": next_managed_players, "AccessAdmins": next_managed_access})
 print(f"Mode global SE2 : {mode}.")
-print(f"Nom du serveur : {network['SessionName']}.")
+print(f"Nom du serveur : {network['SessionName']} ({'variable Pterodactyl' if server_name.strip() else 'server.json'}).")
 print(f"Mot de passe de connexion : {'configuré' if server_password else 'aucun'}.")
-print(f"Admins/owners configurés par SteamID64 : {len(admin_ids)}.")
+print(f"Admins configurés dans Permissions/players.json (groupe Admin) : {len(admin_ids)}.")
 print(f"Threads de travail du jeu : {'automatique' if worker_threads == 0 else worker_threads}.")
 print(f"Rattrapage des ticks : {catch_up_ms} ms.")
 if start_content:
