@@ -382,14 +382,17 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 2
 fi
 SE2_GAME_MODE="${SE2_GAME_MODE:-Survival}"
+SE2_SERVER_NAME="${SE2_SERVER_NAME:-SE2 Online Server}"
 SE2_START_CONTENT="${SE2_START_CONTENT:-}"
 SE2_VANILLA_RESPAWN_SHIPS="${SE2_VANILLA_RESPAWN_SHIPS:-0}"
-python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" <<'PY'
+python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" <<'PY'
 import json, os, sys, tempfile
 
-path, mode, start_content, vanilla_ships = sys.argv[1:]
+path, mode, server_name, start_content, vanilla_ships = sys.argv[1:]
 if mode not in ("Survival", "Creative"):
     raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
+if not server_name.strip() or len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):
+    raise SystemExit("ERROR: SE2_SERVER_NAME doit contenir de 1 à 100 caractères sans saut de ligne.")
 if vanilla_ships.lower() not in ("0", "1", "false", "true", "off", "on"):
     raise SystemExit("ERROR: SE2_VANILLA_RESPAWN_SHIPS doit être 0/1 ou true/false.")
 with open(path, "r", encoding="utf-8") as f:
@@ -402,6 +405,7 @@ builder = cfg["SessionSettings"].setdefault(
     "Keen.Game2.Simulation.GameSystems.Player.GameModeObjectBuilder", {})
 builder["CreativeGlobal"] = mode == "Creative"
 network = cfg.setdefault("Network", {})
+network["SessionName"] = server_name.strip()
 network["VanillaRespawnShips"] = vanilla_ships.lower() in ("1", "true", "on")
 directory = os.path.dirname(os.path.abspath(path))
 fd, tmp = tempfile.mkstemp(prefix=".server.json.", dir=directory, text=True)
@@ -415,6 +419,7 @@ except BaseException:
     except FileNotFoundError: pass
     raise
 print(f"Mode global SE2 : {mode}.")
+print(f"Nom du serveur : {network['SessionName']}.")
 if start_content:
     print(f"Scénario de départ pour un nouveau monde : {start_content}.")
 else:

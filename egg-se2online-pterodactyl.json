@@ -59,6 +59,16 @@
       "field_type": "text"
     },
     {
+      "name": "Server Name",
+      "description": "Name shown in the Space Engineers 2 server browser.",
+      "env_variable": "SE2_SERVER_NAME",
+      "default_value": "SE2 Online Server",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|string|max:100",
+      "field_type": "text"
+    },
+    {
       "name": "Game Mode",
       "description": "Global world mode. Applied whenever the world loads. Changing it affects the current save; Survival is recommended for Classic Survival.",
       "env_variable": "SE2_GAME_MODE",
