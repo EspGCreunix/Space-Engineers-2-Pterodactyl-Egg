@@ -653,7 +653,7 @@ internal abstract class Y51PeerTransport : IPeerTransport, IDisposable, EngineWi
 	{
 		if (story is StoryProgress.Complete complete) return new StoryOut { Id = id, Completion = complete.Completion };
 		var move = (StoryProgress.Move)story;
-		var captured = OwnStories.Capture(id, move.StateMachine, Host.Ids, out string? why);
+		var captured = OwnStories.Capture(id, move.StateMachine, Host.Ids, Host.IsServer, out string? why);
 		if (captured == null)
 		{
 			string name = OwnStories.Short(move.StateMachine.GetType().FullName ?? "?");

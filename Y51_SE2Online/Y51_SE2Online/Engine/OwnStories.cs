@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Keen.Game2.Simulation.GameSystems.Toolbars;
 using Keen.VRage.Library.Reflection;
 using Keen.VRage.Library.UI;
 using Keen.VRage.Library.Utils;
@@ -12,6 +13,7 @@ using Keen.VRage.Multiplayer.Data;
 using Keen.VRage.Multiplayer.NetworkStories;
 using Keen.VRage.Multiplayer.Replications;
 using Keen.VRage.Multiplayer.Replications.FailureStrategies;
+using Keen.VRage.Multiplayer.Sessions;
 using Keen.VRage.Multiplayer.Transport;
 using Y51_SE2Online.Core;
 
@@ -57,6 +59,7 @@ internal static class OwnStories
 	private static readonly ConcurrentDictionary<Type, Plan> Plans = new();
 
 	public static long ClosuresFilled;
+	public static long ToolbarTilesNormalized;
 
 	private static Plan PlanOf(Type machine) => Plans.GetOrAdd(machine, t => new Plan(t));
 
@@ -71,7 +74,7 @@ internal static class OwnStories
 	/// The hop's fields of a story about to move, or null when it cannot cross: a field the other side has no counterpart
 	/// for under a skip strategy (the game drops such a story), or a value no serializer handles.
 	/// </summary>
-	public static OwnStoryMove? Capture(StoryId id, IAsyncStateMachine machine, IReplicationSerializationContext ids, out string? why)
+	public static OwnStoryMove? Capture(StoryId id, IAsyncStateMachine machine, IReplicationSerializationContext ids, bool server, out string? why)
 	{
 		why = null;
 		var plan = PlanOf(machine.GetType());
@@ -85,6 +88,11 @@ internal static class OwnStories
 		foreach (var field in fields)
 		{
 			object? value = field.GetValue(machine);
+			if (!server && IsPlayerToolbarSetTile(machine) && field.Name == "tile" && value is ReleaseToServer<ToolbarTile> release)
+			{
+				ToolbarTile normalized = ExpandModdedToolbarTile(release.Value);
+				if (!ReferenceEquals(normalized, release.Value)) value = new ReleaseToServer<ToolbarTile>(normalized);
+			}
 			if (IsUnpairedSkip(field.FieldType, value, ids) || ObservableObjectReplicationDeltas.ContainsUnpairedReplicatedReference(value, ids))
 			{
 				why = field.Name + " names something the other side does not have";
@@ -98,6 +106,36 @@ internal static class OwnStories
 			move.Fields.Add((plan.Layout.Fields.IndexOf(field), field.FieldType, value));
 		}
 		return move;
+	}
+
+	/// <summary>
+	/// A headless server can have a mod's block definitions without its client-only BlockGroupDefinition. A personal
+	/// toolbar request normally sends that category definition inside BlockGroupToolbarTile, so the server rejects the
+	/// whole RequestSetTile story before its handler runs. Send the same choices as a supported explicit list tile.
+	/// </summary>
+	private static bool IsPlayerToolbarSetTile(IAsyncStateMachine machine)
+		=> machine.GetType().DeclaringType == typeof(PlayerToolbarServerSessionComponent)
+			&& machine.GetType().Name.StartsWith("<RequestSetTile>", StringComparison.Ordinal);
+
+	private static ToolbarTile ExpandModdedToolbarTile(ToolbarTile tile)
+	{
+		IEnumerable<Keen.VRage.DCS.Definitions.EntityCompositeDefinition>? blocks = tile switch
+		{
+			BlockGroupToolbarTile group => group.GetAllBlocks(),
+			BlockKindToolbarTile kind when kind.BlockKind != null => kind.BlockKind.Blocks,
+			_ => null,
+		};
+		if (blocks == null) return tile;
+		var list = blocks.ToList();
+		if (list.Count == 0) return tile;
+
+		var expanded = new BlockListToolbarTile { Blocks = list };
+		if (tile is BlockToolbarTile source) expanded.LastSelectedBlock = source.LastSelectedBlock;
+		expanded.Icon = tile.Icon;
+		expanded.Overlays = tile.Overlays;
+		if (System.Threading.Interlocked.Increment(ref ToolbarTilesNormalized) == 1)
+			GameLog.Instance.Info($"engine: expanded a {tile.GetType().Name} into {list.Count} explicit block choices for the server toolbar request");
+		return expanded;
 	}
 
 	/// <summary>The state machine type a peer names: only a generated network story (one the metadata describes).</summary>
