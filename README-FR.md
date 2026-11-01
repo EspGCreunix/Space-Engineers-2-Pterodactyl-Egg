@@ -11,7 +11,7 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - À chaque démarrage suivant, SteamCMD vérifie la version publiée et applique les mises à jour dans le même dossier persistant. Il n’utilise pas `validate`, qui recontrôlerait tous les fichiers.
 - Au démarrage, l’image récupère le lanceur actuel depuis la branche `main` de GitHub. Si GitHub est inaccessible, elle garde le lanceur déjà installé.
 - À chaque démarrage, le lanceur règle `Network.ListenPort` sur le port principal attribué par Pterodactyl. Le port de requête attendu est le port suivant (`SERVER_PORT + 1`) : attribue aussi ce port au serveur dans **Network**.
-- L’onglet **Startup** permet de choisir le mode global `Survival` ou `Creative`. Le choix est appliqué au chargement du monde.
+- L’onglet **Startup** permet de choisir le mode global `Survival` ou `Creative`. **Block Progression** règle le déblocage des blocs par la recherche SE2 Online : `0` (valeur par défaut) rend accessibles tous les blocs vanilla et moddés sans les débloquer; `1` exige la recherche. Les déblocages déjà acquis sont conservés. Ce réglage est indépendant du mode Survival/Creative.
 - **Server Name** est une surcharge facultative de `Network.SessionName`. Laisse la variable vide pour régler le nom directement dans `server.json`.
 - **Server Password** définit le mot de passe demandé aux joueurs à la connexion; vide, le serveur reste ouvert.
 - **Admin Steam IDs** accepte une liste d’identifiants SteamID64 séparés par des virgules. Le lanceur inscrit ces comptes dans le groupe `Admin` de `Permissions/players.json` et les reflète dans `access.json`; ils ne sont pas ajoutés aux Owner Steam IDs.

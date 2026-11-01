@@ -99,6 +99,16 @@
       "field_type": "text"
     },
     {
+      "name": "Block Progression",
+      "description": "Default 0 makes vanilla and modded blocks available without research. Set to 1 to require research/unlocks; existing unlock progress is preserved.",
+      "env_variable": "SE2_BLOCK_PROGRESSION",
+      "default_value": "0",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|boolean",
+      "field_type": "text"
+    },
+    {
       "name": "Starting Scenario (new worlds only)",
       "description": "Vanilla scenario content ID for a new world: ClassicSurvival, Survival, SurvivalNOFTUE, CRF, or EmptyWorld. Leave blank for the current SaveId/WorldName world. Changing this can start a different world; the old save is preserved.",
       "env_variable": "SE2_START_CONTENT",

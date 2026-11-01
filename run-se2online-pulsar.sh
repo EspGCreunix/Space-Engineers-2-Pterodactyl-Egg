@@ -396,12 +396,13 @@ SE2_SERVER_PASSWORD="${SE2_SERVER_PASSWORD:-}"
 SE2_ADMIN_STEAM_IDS="${SE2_ADMIN_STEAM_IDS:-}"
 SE2_START_CONTENT="${SE2_START_CONTENT:-}"
 SE2_VANILLA_RESPAWN_SHIPS="${SE2_VANILLA_RESPAWN_SHIPS:-0}"
+SE2_BLOCK_PROGRESSION="${SE2_BLOCK_PROGRESSION:-0}"
 SE2_WORKER_THREADS="${SE2_WORKER_THREADS:-0}"
 SE2_CATCH_UP_MS="${SE2_CATCH_UP_MS:-1000}"
-python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_SERVER_PASSWORD" "$SE2_ADMIN_STEAM_IDS" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" "$SE2_WORKER_THREADS" "$SE2_CATCH_UP_MS" <<'PY'
+python3 - "$CONFIG" "$SE2_GAME_MODE" "$SE2_SERVER_NAME" "$SE2_SERVER_PASSWORD" "$SE2_ADMIN_STEAM_IDS" "$SE2_START_CONTENT" "$SE2_VANILLA_RESPAWN_SHIPS" "$SE2_BLOCK_PROGRESSION" "$SE2_WORKER_THREADS" "$SE2_CATCH_UP_MS" <<'PY'
 import json, os, re, sys, tempfile
 
-path, mode, server_name, server_password, admin_ids_raw, start_content, vanilla_ships, worker_threads_raw, catch_up_raw = sys.argv[1:]
+path, mode, server_name, server_password, admin_ids_raw, start_content, vanilla_ships, block_progression, worker_threads_raw, catch_up_raw = sys.argv[1:]
 if mode not in ("Survival", "Creative"):
     raise SystemExit("ERROR: SE2_GAME_MODE doit être Survival ou Creative.")
 if len(server_name) > 100 or any(ord(ch) < 32 or ord(ch) == 127 for ch in server_name):
@@ -414,6 +415,8 @@ if any(not re.fullmatch(r"7656119\d{10}", item) for item in admin_ids):
 admin_ids = list(dict.fromkeys(admin_ids))
 if vanilla_ships.lower() not in ("0", "1", "false", "true", "off", "on"):
     raise SystemExit("ERROR: SE2_VANILLA_RESPAWN_SHIPS doit être 0/1 ou true/false.")
+if block_progression.lower() not in ("0", "1", "false", "true", "off", "on"):
+    raise SystemExit("ERROR: SE2_BLOCK_PROGRESSION doit être 0/1 ou true/false.")
 try:
     worker_threads = int(worker_threads_raw)
     catch_up_ms = int(catch_up_raw)
@@ -444,6 +447,7 @@ else:
     network.setdefault("SessionName", "SE2 Online Server")
 network["Password"] = server_password
 network["VanillaRespawnShips"] = vanilla_ships.lower() in ("1", "true", "on")
+network["Progression"] = block_progression.lower() in ("1", "true", "on")
 directory = os.path.dirname(os.path.abspath(path))
 fd, tmp = tempfile.mkstemp(prefix=".server.json.", dir=directory, text=True)
 try:
@@ -565,6 +569,7 @@ if start_content:
 else:
     print("Aucun scénario forcé; reprise du monde défini par SaveId/WorldName s'il existe.")
 print(f"Vaisseaux de respawn vanilla : {'activés' if network['VanillaRespawnShips'] else 'désactivés'}.")
+print(f"Progression des blocs SE2 Online : {'activée (blocs à débloquer)' if network['Progression'] else 'désactivée (tous les blocs accessibles)'}.")
 PY
 
 if ! command -v Xvfb >/dev/null 2>&1; then echo "ERROR: Xvfb manque dans l’image Linux."; exit 2; fi
