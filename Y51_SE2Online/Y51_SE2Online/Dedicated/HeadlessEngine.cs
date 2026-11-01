@@ -335,7 +335,11 @@ internal static class HeadlessEngine
     {
         if (OperatingSystem.IsLinux())
         {
-            var linuxCompat = Assembly.Load("LinuxCompat");
+            // Pulsar compiles local folder plugins into generated assembly names,
+            // so Assembly.Load("LinuxCompat") cannot resolve the loaded plugin.
+            var linuxCompat = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetType("ClientPlugin.Platform.LinuxSystemEngineComponent", false) != null)
+                ?? throw new InvalidOperationException("Pulsar loaded no LinuxCompat platform assembly");
             Add(engine, linuxCompat, "ClientPlugin.Platform.LinuxSystemEngineComponent");
             Add(engine, linuxCompat, "ClientPlugin.Platform.LinuxRenderEngineComponent");
             Add(engine, linuxCompat, "ClientPlugin.Platform.LinuxMemoryEngineComponent");
