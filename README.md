@@ -14,6 +14,8 @@ The **Server Name** Startup variable sets the name shown in the Space Engineers 
 
 `Server Password` sets the join password; leave it blank for an open server. `Admin Steam IDs` accepts comma-separated SteamID64 values and grants those players SE2 Online Owner permissions. Docker CPU pinning cannot be removed from inside the image: if the container has `Cpuset=0`, clear the host's CPU pinning in Pterodactyl/Wings. A .NET processor-count override cannot bypass that container restriction.
 
+`Game Worker Threads` defaults to `0`, which lets the game choose its worker count. `Tick Catch-up (ms)` defaults to `1000`; setting it to `0` disables large catch-up bursts after a stall, but does not add CPU and can make simulation fall behind under load. Avoid setting every performance value to zero without checking what it controls.
+
 If `server.json` is missing, the launcher recreates a default Survival configuration, then applies the Pterodactyl Startup variables and allocated server port.
 
 Import `egg-se2online-pterodactyl.json`. GitHub Actions publishes `ghcr.io/espgcreunix/se2online-pulsar:latest` after the first push to `main`; make that GHCR package public so Pterodactyl can pull it.

@@ -119,6 +119,26 @@
       "field_type": "text"
     },
     {
+      "name": "Game Worker Threads",
+      "description": "0 lets SE2 choose its worker count (recommended). This cannot override CPU pinning imposed by the Pterodactyl host.",
+      "env_variable": "SE2_WORKER_THREADS",
+      "default_value": "0",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:0|max:256",
+      "field_type": "text"
+    },
+    {
+      "name": "Tick Catch-up (ms)",
+      "description": "Maximum backlog the dedicated loop tries to catch up. 0 uses Keen's native pacing (no catch-up beyond about 83 ms); this may reduce catch-up bursts but simulation can run slower under CPU load. Default 1000 preserves current behavior.",
+      "env_variable": "SE2_CATCH_UP_MS",
+      "default_value": "1000",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "required|integer|min:0|max:10000",
+      "field_type": "text"
+    },
+    {
       "name": "Steam Username (optional)",
       "description": "Steam account that owns Space Engineers 2. Leave blank to try anonymous access. Prefer a dedicated account; Pterodactyl stores this value and the server process can read it.",
       "env_variable": "STEAM_USERNAME",
