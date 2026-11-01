@@ -156,7 +156,7 @@
       "user_viewable": true,
       "user_editable": true,
       "rules": "nullable|string|max:128",
-      "field_type": "password"
+      "field_type": "text"
     },
     {
       "name": "Steam Guard Code (temporary)",
