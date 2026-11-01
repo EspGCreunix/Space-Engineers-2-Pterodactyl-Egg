@@ -310,6 +310,34 @@ done
 if [[ ! -x "$PULSAR_BIN" ]]; then echo "ERROR: Modern.bin n'est pas executable. Extrais Pulsar Linux et conserve son droit d'execution."; exit 2; fi
 if [[ ! -f "$ROOT/Y51_SE2Online/Y51_SE2Online.xml" ]]; then echo "ERROR: descriptor Y51 local absent."; exit 2; fi
 
+# Wings exposes the primary Pterodactyl allocation as SERVER_PORT. Keep the
+# dedicated server's listen port in sync on every boot, including after a user
+# changes the allocation in the panel.
+if [[ -n "${SERVER_PORT:-}" ]]; then
+  if [[ ! "$SERVER_PORT" =~ ^[0-9]{1,5}$ ]] || (( SERVER_PORT < 1 || SERVER_PORT > 65534 )); then
+    echo "ERROR: SERVER_PORT doit être un port entre 1 et 65534 pour garder le port de requête suivant disponible. Valeur reçue: '$SERVER_PORT'."
+    exit 2
+  fi
+  CONFIG_TMP="$(mktemp)"
+  if ! awk -v port="$SERVER_PORT" '
+    /^[[:space:]]*"Network"[[:space:]]*:[[:space:]]*\{/ { in_network=1 }
+    in_network && /^[[:space:]]*"ListenPort"[[:space:]]*:/ {
+      if (sub(/:[[:space:]]*[0-9]+/, ": " port) != 1) exit 42
+      found++
+    }
+    in_network && /^[[:space:]]*}[[:space:]]*,?[[:space:]]*$/ { in_network=0 }
+    { print }
+    END { if (found != 1) exit 42 }
+  ' "$CONFIG" > "$CONFIG_TMP"; then
+    rm -f "$CONFIG_TMP"
+    echo "ERROR: impossible de trouver exactement Network.ListenPort dans $CONFIG; configuration non modifiée."
+    exit 2
+  fi
+  cat "$CONFIG_TMP" > "$CONFIG"
+  rm -f "$CONFIG_TMP"
+  echo "Network.ListenPort synchronisé avec l'allocation Pterodactyl : $SERVER_PORT (port de requête attendu : $((SERVER_PORT + 1)))."
+fi
+
 if ! command -v Xvfb >/dev/null 2>&1; then echo "ERROR: Xvfb manque dans l’image Linux."; exit 2; fi
 Xvfb :99 -screen 0 1024x768x24 -nolisten tcp -ac >/dev/null 2>&1 &
 XVFB_PID=$!
@@ -323,6 +351,25 @@ export DOTNET_ROOT="${DOTNET_ROOT:-$ROOT/dotnet}"
 export DOTNET_ROOT_X64="$DOTNET_ROOT"
 export DOTNET_MULTILEVEL_LOOKUP=0
 mkdir -p "$HOME" "$PULSAR_DIR/Modern/Sources" "$PULSAR_DIR/Modern/Profiles"
+
+# LinuxCompat is compiled from source during Pulsar startup. Five minutes
+# avoids the default 30-second timeout on this large plugin without requiring
+# a manual edit of Pulsar's per-server config.xml.
+PULSAR_CONFIG_XML="$PULSAR_DIR/Modern/config.xml"
+if [[ ! -f "$PULSAR_CONFIG_XML" ]]; then
+  cat > "$PULSAR_CONFIG_XML" <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<CoreConfig><CompilerTimeout>300000</CompilerTimeout></CoreConfig>
+EOF
+elif grep -Eq '<CompilerTimeout>[[:space:]]*[0-9]+[[:space:]]*</CompilerTimeout>' "$PULSAR_CONFIG_XML"; then
+  sed -E -i 's#<CompilerTimeout>[[:space:]]*[0-9]+[[:space:]]*</CompilerTimeout>#<CompilerTimeout>300000</CompilerTimeout>#' "$PULSAR_CONFIG_XML"
+elif grep -q '<CoreConfig[[:space:]>]' "$PULSAR_CONFIG_XML"; then
+  sed -i '/<CoreConfig[[:space:]>]/a\  <CompilerTimeout>300000</CompilerTimeout>' "$PULSAR_CONFIG_XML"
+else
+  echo "ERROR: format inattendu dans $PULSAR_CONFIG_XML; CompilerTimeout non configuré."
+  exit 2
+fi
+echo "Délai de compilation Pulsar/LinuxCompat configuré à 300000 ms (5 minutes)."
 
 # Seed only missing config files. Use root-relative plugin folder so uploads can be relocated.
 if [[ ! -f "$PULSAR_DIR/Modern/Sources/sources.xml" ]]; then

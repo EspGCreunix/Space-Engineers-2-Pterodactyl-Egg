@@ -9,6 +9,8 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - Le lanceur choisit SteamCMD 64 bits pour appliquer son manifeste SteamRT64. Si le CDN de démarrage Steam est indisponible, il récupère les paquets depuis le miroir officiel `media.steampowered.com` et vérifie leurs empreintes avant de relancer SteamCMD.
 - L’état de SteamCMD est conservé dans `.steamcmd-home`, séparé de l’ancien cache Steam du serveur pour éviter qu’il perturbe son initialisation.
 - À chaque démarrage suivant, SteamCMD vérifie la version publiée et applique les mises à jour dans le même dossier persistant. Il n’utilise pas `validate`, qui recontrôlerait tous les fichiers.
+- À chaque démarrage, le lanceur règle `Network.ListenPort` sur le port principal attribué par Pterodactyl. Le port de requête attendu est le port suivant (`SERVER_PORT + 1`) : attribue aussi ce port au serveur dans **Network**.
+- Le délai de compilation des plugins Pulsar/LinuxCompat est réglé automatiquement à cinq minutes pour laisser compiler ce grand plugin au premier démarrage.
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.
 
@@ -21,7 +23,7 @@ Après le premier push :
 1. Attendre la réussite de l’action **Publish Pterodactyl image**.
 2. Dans GitHub, ouvrir le package `se2online-pulsar` et régler sa visibilité sur **Public**. Le dépôt public ne rend pas automatiquement le package GHCR public.
 3. Importer `egg-se2online-pterodactyl.json` dans Pterodactyl.
-4. Créer un serveur avec cet egg, choisir une allocation UDP (par défaut `27016`) et le démarrer. Le téléchargement initial du jeu peut être volumineux.
+4. Créer un serveur avec cet egg, attribuer une allocation UDP principale et aussi le port UDP suivant pour les requêtes. Le lanceur synchronise automatiquement `Network.ListenPort` avec le port principal Pterodactyl. Le téléchargement initial du jeu peut être volumineux.
 
 ## Accès Steam
 

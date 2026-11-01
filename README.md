@@ -6,4 +6,6 @@ The game itself is not included. SteamCMD checks/updates AppID 1133870 in the pe
 
 SteamCMD tries anonymous access by default. If Steam requires ownership of Space Engineers 2, enter a dedicated Steam account's username and password in that server's Pterodactyl Startup variables. On first login, SteamCMD can prompt for a Steam Guard code in the Pterodactyl console, or the temporary code can be entered in its Startup variable. Pterodactyl variables are not a secure secret vault: use a dedicated account and never commit credentials to the egg or repository.
 
+At each launch, the wrapper synchronizes `Network.ListenPort` with Pterodactyl's primary allocation (`SERVER_PORT`). Allocate the following UDP port as well for the game's query port. It also sets Pulsar's plugin compilation timeout to five minutes so LinuxCompat can compile on first start.
+
 Import `egg-se2online-pterodactyl.json`. GitHub Actions publishes `ghcr.io/espgcreunix/se2online-pulsar:latest` after the first push to `main`; make that GHCR package public so Pterodactyl can pull it.
