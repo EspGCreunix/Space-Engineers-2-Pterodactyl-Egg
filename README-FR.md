@@ -7,6 +7,7 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - À l’installation, récupère Pulsar Linux, le code SE2 Online et les composants LinuxCompat nécessaires, puis crée un `server.json` de départ.
 - Au premier démarrage, SteamCMD tente de télécharger Space Engineers 2 (AppID `1133870`) en version Windows, utilisée par LinuxCompat.
 - Le lanceur choisit SteamCMD 64 bits pour appliquer son manifeste SteamRT64. Si le CDN de démarrage Steam est indisponible, il récupère les paquets depuis le miroir officiel `media.steampowered.com` et vérifie leurs empreintes avant de relancer SteamCMD.
+- L’état de SteamCMD est conservé dans `.steamcmd-home`, séparé de l’ancien cache Steam du serveur pour éviter qu’il perturbe son initialisation.
 - À chaque démarrage suivant, SteamCMD vérifie la version publiée et applique les mises à jour dans le même dossier persistant. Il n’utilise pas `validate`, qui recontrôlerait tous les fichiers.
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.

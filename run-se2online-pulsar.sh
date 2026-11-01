@@ -12,7 +12,7 @@ STEAMCMD_BIN="${STEAMCMD:-/opt/steamcmd/steamcmd.sh}"
 export STEAM_PLATFORM="${STEAM_PLATFORM:-linux64}"
 
 seed_steamcmd_bootstrap_packages() {
-  local package_dir="$HOME/Steam/package"
+  local package_dir="$STEAMCMD_HOME/Steam/package"
   local manifest="$package_dir/steam_cmd_steamrt64"
   local name hash tmp parsed=0
 
@@ -83,7 +83,7 @@ seed_steamcmd_bootstrap_packages() {
 # metadata on the persistent Pterodactyl volume so later starts only fetch deltas.
 UPDATE_BLOCKED="$ROOT/.steamcmd-update-blocked"
 UPDATE_LOG="$ROOT/.steamcmd-update.log"
-STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}"
+STEAMCMD_BOOTSTRAP_ID="${STEAMCMD_BUILD_ID:-unknown}-${STEAM_PLATFORM}-isolated-home-1"
 if [[ -e "$UPDATE_BLOCKED" ]]; then
   BLOCKED_BUILD_ID="$(cat "$UPDATE_BLOCKED" 2>/dev/null || true)"
   if [[ "$BLOCKED_BUILD_ID" == "$STEAMCMD_BOOTSTRAP_ID" ]]; then
@@ -101,6 +101,8 @@ fi
 mkdir -p "$GAME_ROOT" "$ROOT/.home"
 export HOME="${HOME:-$ROOT/.home}"
 mkdir -p "$HOME"
+export STEAMCMD_HOME="${STEAMCMD_HOME:-$ROOT/.steamcmd-home}"
+mkdir -p "$STEAMCMD_HOME"
 
 # SteamAPI looks in the user's sdk64 directory. The redistributable library is
 # installed by SteamCMD in the image; seed it into the persistent container home.
@@ -157,7 +159,7 @@ for attempt in 1 2; do
   fi
   STEAMCMD_ARGS+=(+@sSteamCmdForcePlatformType windows +force_install_dir "$GAME_ROOT" \
     "${STEAM_LOGIN_ARGS[@]}" +app_update 1133870 +quit)
-  "$STEAMCMD_BIN" "${STEAMCMD_ARGS[@]}" 2>&1 | tee -a "$UPDATE_LOG"
+  HOME="$STEAMCMD_HOME" "$STEAMCMD_BIN" "${STEAMCMD_ARGS[@]}" 2>&1 | tee -a "$UPDATE_LOG"
   STEAMCMD_STATUS=${PIPESTATUS[0]}
   set -e
   if [[ $STEAMCMD_STATUS -eq 0 ]] && grep -Fq "Success! App '1133870'" "$UPDATE_LOG"; then
