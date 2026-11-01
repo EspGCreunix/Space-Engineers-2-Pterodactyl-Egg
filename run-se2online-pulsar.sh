@@ -13,10 +13,20 @@ export STEAM_PLATFORM="${STEAM_PLATFORM:-linux64}"
 
 seed_steamcmd_bootstrap_packages() {
   local package_dir="$STEAMCMD_HOME/Steam/package"
+  local legacy_package_dir="$HOME/Steam/package"
   local manifest="$package_dir/steam_cmd_steamrt64"
-  local name hash tmp parsed=0
+  local name hash tmp cached parsed=0
+  local -a cached_packages=()
 
   mkdir -p "$package_dir"
+  if [[ "$legacy_package_dir" != "$package_dir" && -d "$legacy_package_dir" ]]; then
+    shopt -s nullglob
+    cached_packages=("$legacy_package_dir"/*)
+    shopt -u nullglob
+    for cached in "${cached_packages[@]}"; do
+      [[ -f "$cached" ]] && cp -n "$cached" "$package_dir/"
+    done
+  fi
   if [[ ! -s "$manifest" ]] || ! grep -Fq '"steamrt64"' "$manifest"; then
     tmp="$manifest.download"
     echo "Récupération du manifeste SteamCMD depuis client-update.steamstatic.com."
