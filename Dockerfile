@@ -4,7 +4,7 @@ FROM --platform=$TARGETOS/$TARGETARCH debian:trixie-slim
 
 USER root
 ARG DOTNET_RUNTIME_VERSION=10.0.14
-ARG STEAMCMD_BUILD_ID=4
+ARG STEAMCMD_BUILD_ID=5
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -25,11 +25,12 @@ RUN apt-get update \
 
 COPY --from=steamcmd --chown=container:container /root/.local/share/Steam/steamcmd/ /opt/steamcmd/
 RUN test -x /opt/steamcmd/linux32/steamcmd \
+ && test -x /opt/steamcmd/steamcmd.sh \
  && test -f /opt/steamcmd/linux64/steamclient.so
 
 ENV DOTNET_ROOT=/usr/share/dotnet \
     PATH="/usr/share/dotnet:${PATH}" \
-    STEAMCMD=/opt/steamcmd/linux32/steamcmd \
+    STEAMCMD=/opt/steamcmd/steamcmd.sh \
     STEAMCMD_BUILD_ID=${STEAMCMD_BUILD_ID} \
     USER=container \
     HOME=/home/container
