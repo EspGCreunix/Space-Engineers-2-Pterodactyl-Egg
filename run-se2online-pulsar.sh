@@ -166,6 +166,15 @@ else
   echo "Aucun compte configuré; essai de connexion anonyme à Steam."
 fi
 mkdir -p "$STEAMCMD_HOME"
+# SteamCMD keeps bootstrap install state in HOME/Steam/package separately from
+# its executable under /opt/steamcmd. Seed the verified build-time state into
+# each isolated account home, preserving any account-local files already there.
+STEAMCMD_IMAGE_PACKAGE="${STEAMCMD_IMAGE_HOME:-/opt/steamcmd-home}/Steam/package"
+STEAMCMD_ACCOUNT_PACKAGE="$STEAMCMD_HOME/Steam/package"
+if [[ -d "$STEAMCMD_IMAGE_PACKAGE" ]]; then
+  mkdir -p "$STEAMCMD_ACCOUNT_PACKAGE"
+  cp -an "$STEAMCMD_IMAGE_PACKAGE/." "$STEAMCMD_ACCOUNT_PACKAGE/"
+fi
 for attempt in 1 2; do
   if [[ $attempt -eq 2 ]]; then
     echo "SteamCMD s’est fermé sans confirmer SE2; nouvel essai unique après son auto-mise à jour."
