@@ -25,7 +25,7 @@ Paquet public expérimental pour créer un serveur Space Engineers 2 headless so
 - Si Steam refuse le téléchargement ou la mise à jour, le script bloque les tentatives suivantes pour éviter une boucle de crash. Après correction, il faut supprimer `.steamcmd-update-blocked` puis redémarrer.
 - Le bouton Stop Pterodactyl envoie `stop now` à SE2 Online pour demander la sauvegarde finale.
 
-`AutoUnloadDockedShips` dans `server.json` est une solution expérimentale pour décharger automatiquement un vaisseau amarré : passe-la à `true` pour transférer les objets des conteneurs de cargo et du connecteur du vaisseau vers les conteneurs de cargo de la grille stationnaire connectée. Le transfert ne se fait que lorsque les connecteurs sont verrouillés. Ce n'est pas l'option **Éjecter objets** et les grilles mobiles ne se déchargent pas entre elles. Fais une sauvegarde et teste d'abord avec peu d'objets.
+`AutoUnloadDockedShips` dans `server.json` active une solution expérimentale de transfert entre deux grilles amarrées. Le transfert a lieu seulement si **Éjecter objets** est activé sur exactement un des deux connecteurs : les cargos et le connecteur de ce côté sont la source; les cargos et le connecteur de l'autre grille sont la destination. Si l'option est désactivée sur les deux connecteurs ou activée sur les deux, rien n'est transféré. Cette fonction ne modifie pas les autres systèmes de convoyeurs ou d'éjection du jeu. Fais une sauvegarde et teste d'abord avec peu d'objets.
 
 ### Passer à une sauvegarde importée
 

@@ -4,7 +4,6 @@ using System.Linq;
 using Keen.Game2.Simulation.WorldObjects.CubeBlocks;
 using Keen.Game2.Simulation.WorldObjects.CubeBlocks.MechanicalBlocks;
 using Keen.Game2.Simulation.WorldObjects.CubeGrids;
-using Keen.Game2.Simulation.WorldObjects.CubeGrids.Physicss;
 using Keen.Game2.Simulation.WorldObjects.Items;
 using Keen.VRage.Core;
 using Keen.VRage.Core.Game.Components;
@@ -16,8 +15,8 @@ using Y51_SE2Online.Core;
 namespace Y51_SE2Online.Dedicated;
 
 /// <summary>
-/// Dedicated-server workaround for SE2's missing automatic dock unloading. When enabled, cargo inventories on a moving
-/// grid and its connector are moved into cargo containers on the connected static grid. It never uses connector ejection.
+/// Dedicated-server workaround for docked-grid inventory transfer. Exactly one connected connector must have Eject Items
+/// enabled; that connector's grid is the source and the other grid is the destination. No game conveyor/ejection system is patched.
 /// </summary>
 internal static class DockUnload
 {
@@ -40,36 +39,43 @@ internal static class DockUnload
     {
         foreach (Entity grid in session.GetEntitiesOfType<CubeGridComponent>())
         {
-            if (grid.TryGet<GridPhysicsComponent>()?.GridMotionType != Keen.VRage.Physics.Data.BodyArgs.Motion.Static) continue;
             var cube = grid.TryGet<CubeGridComponent>();
             if (cube == null) continue;
-
-            var receivingCargo = CargoInventories(grid, cube);
-            if (receivingCargo.Count == 0) continue;
 
             cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
             {
                 if (block.Entity.TryGet<ConnectorComponent>() is not { IsConnected: true, ConnectedEntity: { } remoteConnector }) return;
+                // Process each locked pair once. The eject setting selects direction; equal settings mean no transfer.
+                if (string.CompareOrdinal(block.Entity.ToString(), remoteConnector.ToString()) >= 0) return;
+                var localEjector = block.Entity.TryGet<ItemEjectorComponent>();
+                var remoteEjector = remoteConnector.TryGet<ItemEjectorComponent>();
+                if (localEjector == null || remoteEjector == null || localEjector.IsEnabled == remoteEjector.IsEnabled) return;
+
                 Entity remoteGrid = Y51_SE2Online.SyncEngine.WorldSocial.GridOf(remoteConnector);
                 if (remoteGrid == null || remoteGrid == grid || remoteGrid.TryGet<CubeGridComponent>() == null) return;
-                if (remoteGrid.TryGet<GridPhysicsComponent>()?.GridMotionType == Keen.VRage.Physics.Data.BodyArgs.Motion.Static) return;
 
-                int moved = Unload(remoteGrid, receivingCargo);
+                Entity sourceGrid = localEjector.IsEnabled ? grid : remoteGrid;
+                Entity targetGrid = localEjector.IsEnabled ? remoteGrid : grid;
+                var sourceCube = sourceGrid.TryGet<CubeGridComponent>();
+                var targetCube = targetGrid.TryGet<CubeGridComponent>();
+                if (sourceCube == null || targetCube == null) return;
+                var sourceInventories = CargoInventories(sourceCube, includeConnector: true);
+                var targetInventories = CargoInventories(targetCube, includeConnector: true);
+                if (sourceInventories.Count == 0 || targetInventories.Count == 0) return;
+
+                int moved = Unload(sourceInventories, targetInventories);
                 if (moved > 0)
                 {
-                    string pair = grid.ToString() + "<-" + remoteGrid;
+                    string pair = block.Entity + "->" + remoteConnector;
                     if (LoggedPairs.Add(pair))
-                        GameLog.Instance.Info($"dedicated: dock auto-unload enabled for connected ship {remoteGrid} into static grid {grid}; transferred {moved} item stacks so far");
+                        GameLog.Instance.Info($"dedicated: connector auto-transfer moved {moved} item stacks from {sourceGrid} to {targetGrid}; direction selected by the single enabled Eject Items setting");
                 }
             });
         }
     }
 
-    private static int Unload(Entity sourceGrid, List<InventoryComponent> receivingCargo)
+    private static int Unload(List<InventoryComponent> sources, List<InventoryComponent> targets)
     {
-        var sourceCube = sourceGrid.TryGet<CubeGridComponent>();
-        if (sourceCube == null) return 0;
-        var sources = CargoInventories(sourceGrid, sourceCube, includeConnector: true);
         int movedStacks = 0;
         foreach (var source in sources)
         {
@@ -77,7 +83,7 @@ internal static class DockUnload
             foreach (var stack in source.Items.ToArray())
             {
                 FixedPoint remaining = stack.Amount;
-                foreach (var target in receivingCargo)
+                foreach (var target in targets)
                 {
                     if (remaining <= FixedPoint.Zero) break;
                     FixedPoint amount = source.TransferByDef(target, stack.Definition, null, remaining, allowPartial: true);
@@ -89,7 +95,7 @@ internal static class DockUnload
         return movedStacks;
     }
 
-    private static List<InventoryComponent> CargoInventories(Entity grid, CubeGridComponent cube, bool includeConnector = false)
+    private static List<InventoryComponent> CargoInventories(CubeGridComponent cube, bool includeConnector = false)
     {
         var result = new List<InventoryComponent>();
         cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
