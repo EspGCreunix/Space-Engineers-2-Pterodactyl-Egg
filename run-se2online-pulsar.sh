@@ -11,6 +11,42 @@ STEAMCMD_BIN="${STEAMCMD:-/opt/steamcmd/steamcmd.sh}"
 # otherwise defaults to linux32 on x86_64 and can loop on an unapplied update.
 export STEAM_PLATFORM="${STEAM_PLATFORM:-linux64}"
 
+# A user may remove server.json while repairing a broken setup. Recreate a
+# safe default atomically, then apply Pterodactyl's Startup variables below.
+if [[ ! -f "$CONFIG" ]]; then
+  CONFIG_DIR="$(dirname "$CONFIG")"
+  mkdir -p "$CONFIG_DIR"
+  CONFIG_TMP="$(mktemp "$CONFIG_DIR/.server.json.XXXXXX")"
+  cat > "$CONFIG_TMP" <<'JSON'
+{
+  "SaveId": "",
+  "StartContent": "",
+  "StartWorkshop": "",
+  "WorldName": "Classic Survival 1",
+  "EnableAutosave": true,
+  "SaveIntervalSeconds": 300,
+  "SaveOnExit": true,
+  "ShutdownCountdownSeconds": 60,
+  "Network": {
+    "SessionName": "SE2 Online Server",
+    "Advertise": true,
+    "FriendsOnly": false,
+    "AllowDirectIp": true,
+    "BindAddress": "0.0.0.0",
+    "ListenPort": 27016
+  }
+}
+JSON
+  chmod 0644 "$CONFIG_TMP"
+  mv -n -- "$CONFIG_TMP" "$CONFIG"
+  if [[ -e "$CONFIG_TMP" ]]; then
+    rm -f -- "$CONFIG_TMP"
+    echo "server.json a été recréé entre-temps; le fichier existant est conservé."
+  else
+    echo "server.json absent; configuration par défaut recréée dans $CONFIG."
+  fi
+fi
+
 seed_steamcmd_bootstrap_packages() {
   local package_dir="$STEAMCMD_HOME/Steam/package"
   local legacy_package_dir
