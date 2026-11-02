@@ -296,6 +296,7 @@ internal static class DockUnload
         // Include other named storage blocks without treating every machine inventory as a transfer endpoint.
         cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
         {
+            if (block.Grid?.Entity != cube.Entity) return;
             string name = block.Entity.GetComposition()?.DebugNameShort ?? "";
             bool storage = name.Contains("Storage", StringComparison.OrdinalIgnoreCase) ||
                            name.Contains("Container", StringComparison.OrdinalIgnoreCase) ||
@@ -313,6 +314,7 @@ internal static class DockUnload
         bool found = false;
         cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
         {
+            if (block.Grid?.Entity != cube.Entity) return;
             if (block.Entity.TryGet<CockpitComponent>() != null) found = true;
         });
         return found;
@@ -324,6 +326,9 @@ internal static class DockUnload
         var result = new List<InventoryComponent>();
         cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
         {
+            // VisitAllBlocksWithComponent can traverse a docked composite. Do not let inventories
+            // from the opposite grid become local candidates, or transferred cargo loops back.
+            if (block.Grid?.Entity != cube.Entity) return;
             string name = block.Entity.GetComposition()?.DebugNameShort ?? "";
             bool cargo = name.Contains("CargoContainer", StringComparison.OrdinalIgnoreCase);
             bool connector = includedConnector != null && block.Entity == includedConnector;
