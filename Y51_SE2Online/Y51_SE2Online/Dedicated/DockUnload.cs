@@ -26,8 +26,10 @@ internal static class DockUnload
 {
     private const long ScanIntervalMs = 2000;
     private const long DiagnosticLogIntervalMs = 15000;
+    private const long ScanSummaryIntervalMs = 60000;
     private static long _nextScanMs;
     private static long _lastInactiveLogMs;
+    private static long _lastScanSummaryMs;
     private static readonly Dictionary<string, long> LoggedPairs = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, long> LoggedPairPlans = new(StringComparer.Ordinal);
 
@@ -55,6 +57,8 @@ internal static class DockUnload
     {
         var handledConnectedPairs = new HashSet<string>(StringComparer.Ordinal);
         var handledUndockedConnectors = new HashSet<string>(StringComparer.Ordinal);
+        int connectorsSeen = 0;
+        int connectedConnectorsSeen = 0;
         foreach (Entity grid in session.GetEntitiesOfType<CubeGridComponent>())
         {
             var cube = grid.TryGet<CubeGridComponent>();
@@ -64,9 +68,11 @@ internal static class DockUnload
             {
                 var connector = block.Entity.TryGet<ConnectorComponent>();
                 if (connector == null) return;
+                connectorsSeen++;
                 var localEjector = block.Entity.TryGet<ItemEjectorComponent>();
                 if (connector.IsConnected && connector.ConnectedEntity is { } remoteConnector)
                 {
+                    connectedConnectorsSeen++;
                     string first = block.Entity.ToString();
                     string second = remoteConnector.ToString();
                     string pairKey = string.CompareOrdinal(first, second) < 0 ? first + "|" + second : second + "|" + first;
@@ -81,6 +87,13 @@ internal static class DockUnload
                     block.Entity.TryGet<CubeBlockComponent>()?.Grid is { } owningGrid)
                     ReturnUndockedConnectorItems(owningGrid, block.Entity);
             });
+        }
+
+        long now = Environment.TickCount64;
+        if (now - _lastScanSummaryMs >= ScanSummaryIntervalMs)
+        {
+            _lastScanSummaryMs = now;
+            GameLog.Instance.Info($"dedicated: connector auto-transfer scan active; connector blocks seen={connectorsSeen}, connected endpoints seen={connectedConnectorsSeen}, unique connected pairs={handledConnectedPairs.Count}");
         }
     }
 
