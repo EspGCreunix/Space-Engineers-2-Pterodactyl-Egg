@@ -102,14 +102,18 @@ internal static class DockUnload
 
         var sourceCandidates = CargoInventories(sourceCube, includedConnector: sourceConnector, includeCockpits: true);
         var targetCandidates = CargoInventories(targetCube, includedConnector: targetConnector, includeCockpits: true);
+        // Grid block traversal can omit connector blocks that belong to a composite grid. Always include the two
+        // connector inventories explicitly so items stored directly in either connector can move through the link.
+        if (!sourceCandidates.Contains(sourceAnchor)) sourceCandidates.Add(sourceAnchor);
+        if (!targetCandidates.Contains(targetAnchor)) targetCandidates.Add(targetAnchor);
         if (sourceCandidates.Count == 0 || targetCandidates.Count == 0) return;
 
         int moved = TransferReachable(sourceCandidates, targetCandidates, sourceAnchor, targetAnchor);
         if (moved > 0)
         {
-            string pair = localConnector + "->" + remoteConnector;
+            string pair = $"{sourceConnector}->{targetConnector}|{sourceGrid}->{targetGrid}";
             if (LoggedPairs.Add(pair))
-                GameLog.Instance.Info($"dedicated: connector auto-transfer moved {moved} item stacks from {sourceGrid} to {targetGrid}; only cargo reachable through the paired connectors' conveyor networks was considered");
+                GameLog.Instance.Info($"dedicated: connector auto-transfer moved {moved} item stacks from connector {sourceConnector} (grid {sourceGrid}) to connector {targetConnector} (grid {targetGrid}); only inventories reachable through the paired connectors' conveyor networks were considered");
         }
     }
 
@@ -187,10 +191,11 @@ internal static class DockUnload
     private static List<InventoryComponent> ReachableInventories(InventoryComponent anchor, ItemDefinition item)
     {
         var result = new List<InventoryComponent>();
-        if (anchor?.ConveyorSystem == null) return result;
+        if (anchor == null) return result;
         // The game's iterator may return only inventories reached through graph edges, omitting the starting
         // connector inventory itself. Include that endpoint so items already inside a connector can transfer too.
         result.Add(anchor);
+        if (anchor.ConveyorSystem == null) return result;
         foreach (var inventory in ConveyorSystemComponent.IterateReachableInventories(anchor, item, followEdgeDirection: false, mustContainTheItem: false))
             if (inventory != null && !result.Contains(inventory)) result.Add(inventory);
         return result;
