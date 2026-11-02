@@ -27,6 +27,7 @@ internal static class DockUnload
     private const long ScanIntervalMs = 2000;
     private static long _nextScanMs;
     private static readonly HashSet<string> LoggedPairs = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> LoggedPairPlans = new(StringComparer.Ordinal);
 
     public static void Tick(Session session)
     {
@@ -79,6 +80,9 @@ internal static class DockUnload
         Entity targetGrid = localEjector.IsEnabled ? remoteGrid : grid;
         Entity sourceConnector = localEjector.IsEnabled ? localConnector : remoteConnector;
         Entity targetConnector = localEjector.IsEnabled ? remoteConnector : localConnector;
+        string plan = $"{localConnector}|{localEjector.IsEnabled}|{remoteConnector}|{remoteEjector.IsEnabled}";
+        if (LoggedPairPlans.Add(plan))
+            GameLog.Instance.Info($"dedicated: connector transfer plan: local {localConnector} eject={localEjector.IsEnabled} grid={grid}; remote {remoteConnector} eject={remoteEjector.IsEnabled} grid={remoteGrid}; source {sourceConnector} grid={sourceGrid}; destination {targetConnector} grid={targetGrid}");
         var sourceCube = sourceGrid.TryGet<CubeGridComponent>();
         var targetCube = targetGrid.TryGet<CubeGridComponent>();
         if (sourceCube == null || targetCube == null) return;
@@ -174,8 +178,11 @@ internal static class DockUnload
     {
         var result = new List<InventoryComponent>();
         if (anchor?.ConveyorSystem == null) return result;
+        // The game's iterator may return only inventories reached through graph edges, omitting the starting
+        // connector inventory itself. Include that endpoint so items already inside a connector can transfer too.
+        result.Add(anchor);
         foreach (var inventory in ConveyorSystemComponent.IterateReachableInventories(anchor, item, followEdgeDirection: false, mustContainTheItem: false))
-            if (inventory != null) result.Add(inventory);
+            if (inventory != null && !result.Contains(inventory)) result.Add(inventory);
         return result;
     }
 
