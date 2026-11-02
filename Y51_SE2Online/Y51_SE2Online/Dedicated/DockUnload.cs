@@ -108,47 +108,69 @@ internal static class DockUnload
         var targetCandidates = TransferInventories(targetCube, targetConnector, targetIsVessel);
         if (sourceCandidates.Count == 0 || targetCandidates.Count == 0) return;
 
-        int moved = TransferReachable(sourceCandidates, targetCandidates, sourceAnchor, targetAnchor);
-        if (moved > 0)
+        int loaded = TransferIntoConnector(sourceCandidates, sourceAnchor);
+        int crossed = TransferConnectorToConnector(sourceAnchor, targetAnchor);
+        int unloaded = TransferOutOfConnector(targetAnchor, targetCandidates);
+        if (loaded + crossed + unloaded > 0)
         {
             string pair = $"{sourceConnector}->{targetConnector}|{sourceGrid}->{targetGrid}";
             if (LoggedPairs.Add(pair))
-                GameLog.Instance.Info($"dedicated: connector auto-transfer moved {moved} item stacks from connector {sourceConnector} (grid {sourceGrid}) to connector {targetConnector} (grid {targetGrid}); only inventories reachable through the paired connectors' conveyor networks were considered");
+                GameLog.Instance.Info($"dedicated: connector route {sourceGrid} storage->connector {sourceConnector}: {loaded} stacks; connector {sourceConnector}->{targetConnector}: {crossed} stacks; connector {targetConnector}->storage {targetGrid}: {unloaded} stacks; only inventories reachable through this connector pair's conveyor networks were considered");
         }
     }
 
-    private static int TransferReachable(List<InventoryComponent> sourceCandidates, List<InventoryComponent> targetCandidates,
-        InventoryComponent sourceAnchor, InventoryComponent targetAnchor)
+    private static int TransferIntoConnector(List<InventoryComponent> sourceCandidates, InventoryComponent sourceAnchor)
     {
         int movedStacks = 0;
-        var sourceReachability = new Dictionary<ItemDefinition, HashSet<InventoryComponent>>();
-        var targetReachability = new Dictionary<ItemDefinition, HashSet<InventoryComponent>>();
+        var reachableByItem = new Dictionary<ItemDefinition, HashSet<InventoryComponent>>();
         foreach (var source in sourceCandidates)
         {
-            // Snapshot because successful transfers mutate the inventory's item list.
+            if (source == sourceAnchor) continue;
             foreach (var stack in source.Items.ToArray())
             {
-                if (!sourceReachability.TryGetValue(stack.Definition, out var reachableSources))
+                if (!reachableByItem.TryGetValue(stack.Definition, out var reachable))
                 {
-                    reachableSources = new HashSet<InventoryComponent>(ReachableInventories(sourceAnchor, stack.Definition));
-                    sourceReachability.Add(stack.Definition, reachableSources);
+                    reachable = new HashSet<InventoryComponent>(ReachableInventories(sourceAnchor, stack.Definition));
+                    reachableByItem.Add(stack.Definition, reachable);
                 }
-                if (!reachableSources.Contains(source)) continue;
-                if (!targetReachability.TryGetValue(stack.Definition, out var reachableTargets))
-                {
-                    reachableTargets = new HashSet<InventoryComponent>(ReachableInventories(targetAnchor, stack.Definition));
-                    targetReachability.Add(stack.Definition, reachableTargets);
-                }
-                FixedPoint remaining = stack.Amount;
-                foreach (var target in targetCandidates)
-                {
-                    if (remaining <= FixedPoint.Zero) break;
-                    if (!reachableTargets.Contains(target)) continue;
-                    FixedPoint amount = source.TransferByDef(target, stack.Definition, null, remaining, allowPartial: true);
-                    if (amount > FixedPoint.Zero) remaining -= amount;
-                }
-                if (remaining < stack.Amount) movedStacks++;
+                if (!reachable.Contains(source)) continue;
+                FixedPoint amount = source.TransferByDef(sourceAnchor, stack.Definition, null, stack.Amount, allowPartial: true);
+                if (amount > FixedPoint.Zero) movedStacks++;
             }
+        }
+        return movedStacks;
+    }
+
+    private static int TransferConnectorToConnector(InventoryComponent sourceAnchor, InventoryComponent targetAnchor)
+    {
+        int movedStacks = 0;
+        foreach (var stack in sourceAnchor.Items.ToArray())
+        {
+            FixedPoint amount = sourceAnchor.TransferByDef(targetAnchor, stack.Definition, null, stack.Amount, allowPartial: true);
+            if (amount > FixedPoint.Zero) movedStacks++;
+        }
+        return movedStacks;
+    }
+
+    private static int TransferOutOfConnector(InventoryComponent targetAnchor, List<InventoryComponent> targetCandidates)
+    {
+        int movedStacks = 0;
+        var reachableByItem = new Dictionary<ItemDefinition, HashSet<InventoryComponent>>();
+        foreach (var stack in targetAnchor.Items.ToArray())
+        {
+            if (!reachableByItem.TryGetValue(stack.Definition, out var reachable))
+            {
+                reachable = new HashSet<InventoryComponent>(ReachableInventories(targetAnchor, stack.Definition));
+                reachableByItem.Add(stack.Definition, reachable);
+            }
+            FixedPoint remaining = stack.Amount;
+            foreach (var target in targetCandidates)
+            {
+                if (target == targetAnchor || !reachable.Contains(target) || remaining <= FixedPoint.Zero) continue;
+                FixedPoint amount = targetAnchor.TransferByDef(target, stack.Definition, null, remaining, allowPartial: true);
+                if (amount > FixedPoint.Zero) remaining -= amount;
+            }
+            if (remaining < stack.Amount) movedStacks++;
         }
         return movedStacks;
     }
