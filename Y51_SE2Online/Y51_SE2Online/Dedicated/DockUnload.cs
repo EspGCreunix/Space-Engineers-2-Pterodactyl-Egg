@@ -42,6 +42,8 @@ internal static class DockUnload
 
     private static void Scan(Session session)
     {
+        var handledConnectedPairs = new HashSet<string>(StringComparer.Ordinal);
+        var handledUndockedConnectors = new HashSet<string>(StringComparer.Ordinal);
         foreach (Entity grid in session.GetEntitiesOfType<CubeGridComponent>())
         {
             var cube = grid.TryGet<CubeGridComponent>();
@@ -54,35 +56,43 @@ internal static class DockUnload
                 var localEjector = block.Entity.TryGet<ItemEjectorComponent>();
                 if (connector.IsConnected && connector.ConnectedEntity is { } remoteConnector)
                 {
-                    ProcessConnectedPair(grid, block.Entity, localEjector, remoteConnector);
+                    string first = block.Entity.ToString();
+                    string second = remoteConnector.ToString();
+                    string pairKey = string.CompareOrdinal(first, second) < 0 ? first + "|" + second : second + "|" + first;
+                    if (handledConnectedPairs.Add(pairKey))
+                        ProcessConnectedPair(block.Entity, localEjector, remoteConnector);
                     return;
                 }
 
                 // Items can remain in the connector inventory after it is undocked. Return them locally only when the
                 // connector is not configured to eject into the world; inaccessible or full cargo stays in place to retry.
-                if (localEjector?.IsEnabled == false)
-                    ReturnUndockedConnectorItems(cube, block.Entity);
+                if (localEjector?.IsEnabled == false && handledUndockedConnectors.Add(block.Entity.ToString()) &&
+                    block.Entity.TryGet<CubeBlockComponent>()?.Grid is { } owningGrid)
+                    ReturnUndockedConnectorItems(owningGrid, block.Entity);
             });
         }
     }
 
-    private static void ProcessConnectedPair(Entity grid, Entity localConnector, ItemEjectorComponent localEjector, Entity remoteConnector)
+    private static void ProcessConnectedPair(Entity localConnector, ItemEjectorComponent localEjector, Entity remoteConnector)
     {
         // Process each locked pair once. The eject setting selects direction; equal settings mean no transfer.
         if (string.CompareOrdinal(localConnector.ToString(), remoteConnector.ToString()) >= 0) return;
         var remoteEjector = remoteConnector.TryGet<ItemEjectorComponent>();
         if (localEjector == null || remoteEjector == null || localEjector.IsEnabled == remoteEjector.IsEnabled) return;
 
-        Entity remoteGrid = Y51_SE2Online.SyncEngine.WorldSocial.GridOf(remoteConnector);
-        if (remoteGrid == null || remoteGrid == grid || remoteGrid.TryGet<CubeGridComponent>() == null) return;
+        var localBlock = localConnector.TryGet<CubeBlockComponent>();
+        var remoteBlock = remoteConnector.TryGet<CubeBlockComponent>();
+        Entity localGrid = localBlock?.Grid?.Entity;
+        Entity remoteGrid = remoteBlock?.Grid?.Entity;
+        if (localGrid == null || remoteGrid == null || remoteGrid == localGrid) return;
 
-        Entity sourceGrid = localEjector.IsEnabled ? grid : remoteGrid;
-        Entity targetGrid = localEjector.IsEnabled ? remoteGrid : grid;
+        Entity sourceGrid = localEjector.IsEnabled ? localGrid : remoteGrid;
+        Entity targetGrid = localEjector.IsEnabled ? remoteGrid : localGrid;
         Entity sourceConnector = localEjector.IsEnabled ? localConnector : remoteConnector;
         Entity targetConnector = localEjector.IsEnabled ? remoteConnector : localConnector;
-        string plan = $"{localConnector}|{localEjector.IsEnabled}|{remoteConnector}|{remoteEjector.IsEnabled}";
+        string plan = $"{localConnector}|{localEjector.IsEnabled}|{localGrid}|{remoteConnector}|{remoteEjector.IsEnabled}|{remoteGrid}";
         if (LoggedPairPlans.Add(plan))
-            GameLog.Instance.Info($"dedicated: connector transfer plan: local {localConnector} eject={localEjector.IsEnabled} grid={grid}; remote {remoteConnector} eject={remoteEjector.IsEnabled} grid={remoteGrid}; source {sourceConnector} grid={sourceGrid}; destination {targetConnector} grid={targetGrid}");
+            GameLog.Instance.Info($"dedicated: connector transfer plan: local {localConnector} eject={localEjector.IsEnabled} grid={localGrid}; remote {remoteConnector} eject={remoteEjector.IsEnabled} grid={remoteGrid}; source {sourceConnector} grid={sourceGrid}; destination {targetConnector} grid={targetGrid}");
         var sourceCube = sourceGrid.TryGet<CubeGridComponent>();
         var targetCube = targetGrid.TryGet<CubeGridComponent>();
         if (sourceCube == null || targetCube == null) return;
