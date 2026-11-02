@@ -100,12 +100,11 @@ internal static class DockUnload
         var targetAnchor = ConnectorInventory(targetConnector);
         if (sourceAnchor == null || targetAnchor == null) return;
 
-        var sourceCandidates = CargoInventories(sourceCube, includedConnector: sourceConnector, includeCockpits: true);
-        var targetCandidates = CargoInventories(targetCube, includedConnector: targetConnector, includeCockpits: true);
-        // Grid block traversal can omit connector blocks that belong to a composite grid. Always include the two
-        // connector inventories explicitly so items stored directly in either connector can move through the link.
-        if (!sourceCandidates.Contains(sourceAnchor)) sourceCandidates.Add(sourceAnchor);
-        if (!targetCandidates.Contains(targetAnchor)) targetCandidates.Add(targetAnchor);
+        // A grid with a cockpit is treated as a vessel: its block inventories (cargo, cockpit, and other
+        // conveyor-connected storage) may send or receive. A base without a cockpit only sends from cargo
+        // containers, preventing machines and connector inventories from becoming a source by accident.
+        var sourceCandidates = TransferInventories(sourceCube, sourceConnector);
+        var targetCandidates = TransferInventories(targetCube, targetConnector);
         if (sourceCandidates.Count == 0 || targetCandidates.Count == 0) return;
 
         int moved = TransferReachable(sourceCandidates, targetCandidates, sourceAnchor, targetAnchor);
@@ -209,6 +208,32 @@ internal static class DockUnload
 
     private static InventoryComponent ConnectorInventory(Entity connector) =>
         connector?.Components.OfType<InventoryComponent>().FirstOrDefault();
+
+    private static List<InventoryComponent> TransferInventories(CubeGridComponent cube, Entity connector)
+    {
+        bool vessel = HasCockpit(cube);
+        if (!vessel)
+            return CargoInventories(cube);
+
+        var result = new List<InventoryComponent>();
+        cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
+            result.AddRange(block.Entity.Components.OfType<InventoryComponent>()));
+        // Composite-grid traversal can omit a connector block. On the vessel side, its own inventory is a valid
+        // storage source/destination, so add that endpoint directly. Base transfers remain limited to cargo blocks.
+        var connectorInventory = ConnectorInventory(connector);
+        if (connectorInventory != null && !result.Contains(connectorInventory)) result.Add(connectorInventory);
+        return result.Distinct().ToList();
+    }
+
+    private static bool HasCockpit(CubeGridComponent cube)
+    {
+        bool found = false;
+        cube.VisitAllBlocksWithComponent((CubeBlockComponent block) =>
+        {
+            if (block.Entity.TryGet<CockpitComponent>() != null) found = true;
+        });
+        return found;
+    }
 
     private static List<InventoryComponent> CargoInventories(CubeGridComponent cube, Entity includedConnector = null,
         Entity excludedConnector = null, bool includeCockpits = false)
