@@ -25,14 +25,25 @@ namespace Y51_SE2Online.Dedicated;
 internal static class DockUnload
 {
     private const long ScanIntervalMs = 2000;
+    private const long DiagnosticLogIntervalMs = 15000;
     private static long _nextScanMs;
-    private static readonly HashSet<string> LoggedPairs = new(StringComparer.Ordinal);
-    private static readonly HashSet<string> LoggedPairPlans = new(StringComparer.Ordinal);
+    private static long _lastInactiveLogMs;
+    private static readonly Dictionary<string, long> LoggedPairs = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, long> LoggedPairPlans = new(StringComparer.Ordinal);
 
     public static void Tick(Session session)
     {
-        if (!DedicatedRuntime.Requested || DedicatedRuntime.Config?.AutoUnloadDockedShips != true) return;
         long now = Environment.TickCount64;
+        if (!DedicatedRuntime.Requested) return;
+        if (DedicatedRuntime.Config?.AutoUnloadDockedShips != true)
+        {
+            if (now - _lastInactiveLogMs >= 60000)
+            {
+                _lastInactiveLogMs = now;
+                GameLog.Instance.Info("dedicated: connector auto-transfer inactive; AutoUnloadDockedShips is false or missing in the loaded server configuration");
+            }
+            return;
+        }
         if (now < _nextScanMs) return;
         _nextScanMs = now + ScanIntervalMs;
 
@@ -78,7 +89,13 @@ internal static class DockUnload
         // Process each locked pair once. The eject setting selects direction; equal settings mean no transfer.
         if (string.CompareOrdinal(localConnector.ToString(), remoteConnector.ToString()) >= 0) return;
         var remoteEjector = remoteConnector.TryGet<ItemEjectorComponent>();
-        if (localEjector == null || remoteEjector == null || localEjector.IsEnabled == remoteEjector.IsEnabled) return;
+        if (localEjector == null || remoteEjector == null) return;
+
+        string pairKey = $"{localConnector}|{remoteConnector}";
+        string stateKey = $"{pairKey}|{localEjector.IsEnabled}|{remoteEjector.IsEnabled}";
+        if (ShouldLog(LoggedPairPlans, stateKey, Environment.TickCount64))
+            GameLog.Instance.Info($"dedicated: connector pair state: local {localConnector} eject={localEjector.IsEnabled}; remote {remoteConnector} eject={remoteEjector.IsEnabled}; {(localEjector.IsEnabled == remoteEjector.IsEnabled ? "transfer disabled (both settings match)" : "transfer direction follows the connector set to eject")}");
+        if (localEjector.IsEnabled == remoteEjector.IsEnabled) return;
 
         var localBlock = localConnector.TryGet<CubeBlockComponent>();
         var remoteBlock = remoteConnector.TryGet<CubeBlockComponent>();
@@ -90,8 +107,8 @@ internal static class DockUnload
         Entity targetGrid = localEjector.IsEnabled ? remoteGrid : localGrid;
         Entity sourceConnector = localEjector.IsEnabled ? localConnector : remoteConnector;
         Entity targetConnector = localEjector.IsEnabled ? remoteConnector : localConnector;
-        string plan = $"{localConnector}|{localEjector.IsEnabled}|{localGrid}|{remoteConnector}|{remoteEjector.IsEnabled}|{remoteGrid}";
-        if (LoggedPairPlans.Add(plan))
+        string plan = $"{stateKey}|{localGrid}|{remoteGrid}";
+        if (ShouldLog(LoggedPairPlans, plan, Environment.TickCount64))
             GameLog.Instance.Info($"dedicated: connector transfer plan: local {localConnector} eject={localEjector.IsEnabled} grid={localGrid}; remote {remoteConnector} eject={remoteEjector.IsEnabled} grid={remoteGrid}; source {sourceConnector} grid={sourceGrid}; destination {targetConnector} grid={targetGrid}");
         var sourceCube = sourceGrid.TryGet<CubeGridComponent>();
         var targetCube = targetGrid.TryGet<CubeGridComponent>();
@@ -111,12 +128,9 @@ internal static class DockUnload
         int loaded = TransferIntoConnector(sourceCandidates, sourceAnchor);
         int crossed = TransferConnectorToConnector(sourceAnchor, targetAnchor);
         int unloaded = TransferOutOfConnector(targetAnchor, targetCandidates);
-        if (loaded + crossed + unloaded > 0)
-        {
-            string pair = $"{sourceConnector}->{targetConnector}|{sourceGrid}->{targetGrid}";
-            if (LoggedPairs.Add(pair))
-                GameLog.Instance.Info($"dedicated: connector route {sourceGrid} storage->connector {sourceConnector}: {loaded} stacks; connector {sourceConnector}->{targetConnector}: {crossed} stacks; connector {targetConnector}->storage {targetGrid}: {unloaded} stacks; only inventories reachable through this connector pair's conveyor networks were considered");
-        }
+        string routeKey = $"{sourceConnector}->{targetConnector}|{sourceGrid}->{targetGrid}";
+        if (ShouldLog(LoggedPairs, routeKey, Environment.TickCount64))
+            GameLog.Instance.Info($"dedicated: connector route {sourceGrid} storage->connector {sourceConnector}: {loaded} stacks; connector {sourceConnector}->{targetConnector}: {crossed} stacks; connector {targetConnector}->storage {targetGrid}: {unloaded} stacks; candidate inventories source={sourceCandidates.Count} destination={targetCandidates.Count}; source conveyor={(sourceAnchor.ConveyorSystem != null)} destination conveyor={(targetAnchor.ConveyorSystem != null)}");
     }
 
     private static int TransferIntoConnector(List<InventoryComponent> sourceCandidates, InventoryComponent sourceAnchor)
@@ -205,7 +219,7 @@ internal static class DockUnload
         if (movedStacks > 0)
         {
             string key = "undocked:" + connectorEntity;
-            if (LoggedPairs.Add(key))
+            if (ShouldLog(LoggedPairs, key, Environment.TickCount64))
                 GameLog.Instance.Info($"dedicated: returned {movedStacks} item stacks from undocked connector {connectorEntity} to the nearest reachable cargo containers; any remainder stays in the connector and will be retried");
         }
     }
@@ -231,6 +245,13 @@ internal static class DockUnload
 
     private static InventoryComponent ConnectorInventory(Entity connector) =>
         connector?.Components.OfType<InventoryComponent>().FirstOrDefault();
+
+    private static bool ShouldLog(Dictionary<string, long> lastLogged, string key, long now)
+    {
+        if (lastLogged.TryGetValue(key, out long previous) && now - previous < DiagnosticLogIntervalMs) return false;
+        lastLogged[key] = now;
+        return true;
+    }
 
     private static List<InventoryComponent> TransferInventories(CubeGridComponent cube, Entity connector, bool vessel)
     {
