@@ -32,6 +32,7 @@ internal static class DockUnload
     private static long _lastScanSummaryMs;
     private static readonly Dictionary<string, long> LoggedPairs = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, long> LoggedPairPlans = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, long> LoggedInventoryMoves = new(StringComparer.Ordinal);
 
     public static void Tick(Session session)
     {
@@ -162,7 +163,11 @@ internal static class DockUnload
                 }
                 if (!reachable.Contains(source)) continue;
                 FixedPoint amount = source.TransferByDef(sourceAnchor, stack.Definition, null, stack.Amount, allowPartial: true);
-                if (amount > FixedPoint.Zero) movedStacks++;
+                if (amount > FixedPoint.Zero)
+                {
+                    movedStacks++;
+                    LogInventoryMove("storage-to-connector", source, sourceAnchor, stack.Definition, amount);
+                }
             }
         }
         return movedStacks;
@@ -174,7 +179,11 @@ internal static class DockUnload
         foreach (var stack in sourceAnchor.Items.ToArray())
         {
             FixedPoint amount = sourceAnchor.TransferByDef(targetAnchor, stack.Definition, null, stack.Amount, allowPartial: true);
-            if (amount > FixedPoint.Zero) movedStacks++;
+            if (amount > FixedPoint.Zero)
+            {
+                movedStacks++;
+                LogInventoryMove("connector-to-connector", sourceAnchor, targetAnchor, stack.Definition, amount);
+            }
         }
         return movedStacks;
     }
@@ -195,7 +204,11 @@ internal static class DockUnload
             {
                 if (target == targetAnchor || !reachable.Contains(target) || remaining <= FixedPoint.Zero) continue;
                 FixedPoint amount = targetAnchor.TransferByDef(target, stack.Definition, null, remaining, allowPartial: true);
-                if (amount > FixedPoint.Zero) remaining -= amount;
+                if (amount > FixedPoint.Zero)
+                {
+                    remaining -= amount;
+                    LogInventoryMove("connector-to-storage", targetAnchor, target, stack.Definition, amount);
+                }
             }
             if (remaining < stack.Amount) movedStacks++;
         }
@@ -264,6 +277,14 @@ internal static class DockUnload
         if (lastLogged.TryGetValue(key, out long previous) && now - previous < DiagnosticLogIntervalMs) return false;
         lastLogged[key] = now;
         return true;
+    }
+
+    private static void LogInventoryMove(string stage, InventoryComponent source, InventoryComponent target,
+        ItemDefinition item, FixedPoint amount)
+    {
+        string key = $"{stage}|{source?.Entity}|{target?.Entity}|{item}";
+        if (ShouldLog(LoggedInventoryMoves, key, Environment.TickCount64))
+            GameLog.Instance.Info($"dedicated: connector transfer detail stage={stage}; item={item}; amount={amount}; source inventory={source?.Entity}; destination inventory={target?.Entity}");
     }
 
     private static List<InventoryComponent> TransferInventories(CubeGridComponent cube, Entity connector, bool vessel)
