@@ -145,10 +145,12 @@ internal static class DockUnload
         foreach (var stack in connectorInventory.Items.ToArray())
         {
             var reachable = ReachableInventories(connectorInventory, stack.Definition);
-            var at = connectorEntity.Data.GetWorldTransform().Position;
+            var connectorBlock = connectorEntity.TryGet<CubeBlockComponent>();
+            if (connectorBlock == null) return;
+            var at = connectorBlock.Data.GetWorldTransform().Position;
             var nearestFirst = localCargo
                 .Where(reachable.Contains)
-                .OrderBy(inv => Vector3D.DistanceSquared(inv.Entity.Data.GetWorldTransform().Position, at));
+                .OrderBy(inv => Vector3D.DistanceSquared(BlockPosition(inv), at));
             FixedPoint remaining = stack.Amount;
             foreach (var target in nearestFirst)
             {
@@ -170,11 +172,16 @@ internal static class DockUnload
     private static List<InventoryComponent> ReachableInventories(InventoryComponent anchor, ItemDefinition item)
     {
         var result = new List<InventoryComponent>();
-        var system = anchor?.ConveyorSystem;
-        if (system == null) return result;
-        foreach (var inventory in system.IterateReachableInventories(anchor, item, followEdgeDirection: false, mustContainTheItem: false))
+        if (anchor?.ConveyorSystem == null) return result;
+        foreach (var inventory in ConveyorSystemComponent.IterateReachableInventories(anchor, item, followEdgeDirection: false, mustContainTheItem: false))
             if (inventory != null) result.Add(inventory);
         return result;
+    }
+
+    private static Vector3D BlockPosition(InventoryComponent inventory)
+    {
+        var block = inventory?.Entity.TryGet<CubeBlockComponent>();
+        return block?.Data.GetWorldTransform().Position ?? default;
     }
 
     private static InventoryComponent ConnectorInventory(Entity connector) =>
