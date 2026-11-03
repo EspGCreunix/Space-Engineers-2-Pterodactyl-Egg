@@ -7,7 +7,7 @@
   "exported_at": "2026-10-31T00:00:00+01:00",
   "name": "Space Engineers 2 - SE2 Online Linux",
   "author": "espgcreunix@users.noreply.github.com",
-  "description": "SE2 Online dedicated server on native Linux through Pulsar/LinuxCompat. Downloads and updates Space Engineers 2 through SteamCMD on server start.",
+  "description": "SE2 Online Linux dedicated server. Includes experimental docked-connector item transfer: exactly one paired connector must have Eject Items on. Turn it off before disconnecting; items left in the active connector may be ejected into space or onto the ground. See README for details.",
   "features": null,
   "docker_images": {
     "GHCR Linux AMD64": "ghcr.io/espgcreunix/se2online-pulsar:latest"

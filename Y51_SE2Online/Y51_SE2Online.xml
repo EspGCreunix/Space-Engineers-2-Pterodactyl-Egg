@@ -5,7 +5,7 @@
   <FriendlyName>SE2 Online Linux headless (experimental)</FriendlyName>
   <Author>Local custom build</Author>
   <Tooltip>Experimental headless Linux port using Pulsar and LinuxCompat</Tooltip>
-  <Description>Local custom Y51 build. Uses LinuxCompat platform services in the headless server engine.</Description>
+  <Description>Custom SE2 Online multiplayer server build for Linux headless. Includes experimental docked-connector item transfer: exactly one paired connector must have Eject Items on to choose the transfer direction. Turn Eject Items off before disconnecting; items left in the active connector may be ejected into space or onto the ground. See the project README for details.</Description>
   <SourceDirectories><Directory>Y51_SE2Online</Directory><Directory>Properties</Directory></SourceDirectories>
   <DefineConstants>PULSAR</DefineConstants>
   <Asset Name="AssetFolder" Path="Y51_SE2Online/Content" />
