@@ -1,6 +1,6 @@
-# SE2 Online — egg Pterodactyl Linux
+# Space Engineers 2 Pterodactyl Egg — SE2 Online Linux Server
 
-Egg and runtime image for an experimental headless SE2 Online server on Linux. See [README-FR.md](README-FR.md) for setup, Steam access, updates, ports, and limitations.
+This repository provides a **Space Engineers 2 Pterodactyl egg** and Linux dedicated-server setup for **SE2 Online**. Use it to install and run a Space Engineers 2 server with Pterodactyl, Wings, Docker, SteamCMD, Pulsar, and LinuxCompat. See [README-FR.md](README-FR.md) for the French guide, or continue below for setup, Steam access, updates, ports, and limitations.
 
 The game itself is not included. SteamCMD checks/updates AppID 1133870 in the persistent Pterodactyl volume before every launch. The initial download requires network access and may require a Steam entitlement; the project's public image contains only runtime dependencies and SteamCMD. The launcher uses SteamCMD's 64-bit client in a dedicated persistent home and can recover its bootstrap packages from Steam's media mirror if the bootstrap CDN is unavailable; downloaded packages are checked against the hashes in Steam's manifest.
 

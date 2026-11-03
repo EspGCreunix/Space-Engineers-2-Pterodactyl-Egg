@@ -1,6 +1,6 @@
-# Egg Pterodactyl — Space Engineers 2 / SE2 Online (Linux)
+# Egg Pterodactyl Space Engineers 2 — Serveur SE2 Online Linux
 
-Paquet public expérimental pour créer un serveur Space Engineers 2 headless sous Linux avec Pulsar, LinuxCompat et le plugin SE2 Online adapté. Les fichiers du jeu ne sont jamais inclus dans l’image Docker ni dans le dépôt.
+Ce dépôt fournit un **egg Pterodactyl pour Space Engineers 2** et une installation de serveur dédié Linux avec **SE2 Online**. Il permet d’installer et lancer le serveur avec Pterodactyl, Wings, Docker, SteamCMD, Pulsar et LinuxCompat. Les fichiers du jeu ne sont jamais inclus dans l’image Docker ni dans le dépôt. Consulte aussi le [guide anglais](README.md).
 
 ## Ce que fait l’egg
 
