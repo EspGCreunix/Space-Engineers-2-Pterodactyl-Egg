@@ -1,6 +1,6 @@
-# Egg Pterodactyl Space Engineers 2 — Serveur SE2 Online Linux
+# Egg Pterodactyl multijoueur Space Engineers 2 — Serveur dédié SE2 Online Linux
 
-Ce dépôt fournit un **egg Pterodactyl pour Space Engineers 2** et une installation de serveur dédié Linux avec **SE2 Online**. Il permet d’installer et lancer le serveur avec Pterodactyl, Wings, Docker, SteamCMD, Pulsar et LinuxCompat. Les fichiers du jeu ne sont jamais inclus dans l’image Docker ni dans le dépôt. Consulte aussi le [guide anglais](README.md).
+Ce dépôt fournit un **egg Pterodactyl multijoueur pour Space Engineers 2** et une installation de serveur dédié Linux avec **SE2 Online**. Il permet d’héberger un serveur multijoueur avec Pterodactyl, Wings, Docker, SteamCMD, Pulsar et LinuxCompat. Les fichiers du jeu ne sont jamais inclus dans l’image Docker ni dans le dépôt. Consulte aussi le [guide anglais](README.md).
 
 ## Ce que fait l’egg
 

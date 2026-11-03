@@ -7,7 +7,7 @@
   "exported_at": "2026-10-31T00:00:00+01:00",
   "name": "Space Engineers 2 - SE2 Online Linux",
   "author": "espgcreunix@users.noreply.github.com",
-  "description": "SE2 Online Linux dedicated server. Includes experimental docked-connector item transfer: exactly one paired connector must have Eject Items on. Turn it off before disconnecting; items left in the active connector may be ejected into space or onto the ground. See README for details.",
+  "description": "Space Engineers 2 multiplayer dedicated server egg for Pterodactyl on Linux, powered by SE2 Online. Experimental docked-connector item transfer included. Turn Eject Items off before disconnecting to avoid ejecting items into space or onto the ground.",
   "features": null,
   "docker_images": {
     "GHCR Linux AMD64": "ghcr.io/espgcreunix/se2online-pulsar:latest"
